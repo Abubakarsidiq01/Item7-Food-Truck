@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Staff List</title>
+</head>
+<body>
+    <h1>Staff Members</h1>
+<p><a href="/add_staff">Add New Staff Member</a></p>
+
+    {% if staff|length == 0 %}
+        <p>No staff found.</p>
+    {% else %}
+        <table border="1" cellpadding="8">
+            <tr>
+                <th>Full Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>DOB</th>
+                <th>Sex</th>
+            </tr>
+
+            {% for s in staff %}
+            <tr>
+                <td>{{ s.first }} {{ s.last }}</td>
+                <td>{{ s.email }}</td>
+                <td>{{ s.phone }}</td>
+                <td>{{ s.dob }}</td>
+                <td>{{ s.sex }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    {% endif %}
+
+    <br>
+    <a href="/">Back to Home</a>
+</body>
+</html>

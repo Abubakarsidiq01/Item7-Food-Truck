@@ -1,0 +1,69 @@
+/* General page styles */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #fafafa;
+    color: #222;
+}
+
+/* Simple top bar */
+header {
+    background-color: #d6001c;  /* KFC-ish red */
+    color: white;
+    padding: 15px 40px;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 28px;
+}
+
+/* Main content area */
+main {
+    padding: 20px 40px;
+}
+
+/* Links styled as simple buttons */
+a.button {
+    display: inline-block;
+    padding: 8px 14px;
+    text-decoration: none;
+    background-color: #d6001c;
+    color: white;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+/* Simple menu cards */
+.menu-section {
+    margin-top: 30px;
+}
+
+.menu-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.menu-card {
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 15px;
+    width: 250px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.menu-card h3 {
+    margin-top: 0;
+}
+
+.menu-card p {
+    margin: 4px 0;
+}
+
+.menu-card .price {
+    font-weight: bold;
+    margin-top: 8px;
+}

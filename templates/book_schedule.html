@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Book Schedule</title>
+</head>
+<body>
+    <h1>Book Work Schedule</h1>
+
+    <form action="/book_schedule" method="POST">
+        <label>Manager Name:</label><br>
+        <input type="text" name="manager" required><br><br>
+
+        <label>Staff Member:</label><br>
+        <select name="staff_email" required>
+            {% for s in staff %}
+                <option value="{{ s.email }}">
+                    {{ s.first }} {{ s.last }} ({{ s.email }})
+                </option>
+            {% endfor %}
+        </select>
+        <br><br>
+
+        <label>Date:</label><br>
+        <input type="text" name="date" placeholder="2025-11-21" required><br><br>
+
+        <label>Time:</label><br>
+        <input type="text" name="time" placeholder="10:00" required><br><br>
+
+        <label>Work Time Description:</label><br>
+        <input type="text" name="work_time" placeholder="Morning shift 9-1" required><br><br>
+
+        <input type="submit" value="Book Schedule">
+    </form>
+
+    <br>
+    <a href="/schedules">Back to Schedules</a>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CS120 Food Truck</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<header>
+    <h1>{{ truck.name }}</h1>
+</header>
+
+<main>
+    <p><strong>Location:</strong> {{ truck.location }}</p>
+
+    <h2>System Summary</h2>
+    <ul>
+        <li>Staff count: {{ staff_count }}</li>
+        <li>Schedules count: {{ schedule_count }}</li>
+    </ul>
+
+    <p>
+        <a href="{{ url_for('staff_page') }}" class="button">View Staff</a>
+        <a href="{{ url_for('schedules_page') }}" class="button">View Schedules</a>
+    </p>
+
+    <hr>
+
+    <!-- Simple menu section like KFC cards -->
+    <section class="menu-section">
+        <h2>Menu</h2>
+        <div class="menu-grid">
+            <div class="menu-card">
+                <h3>Original Chicken Sandwich Combo</h3>
+                <p>Crispy chicken sandwich, fries & drink.</p>
+                <p class="price">$7.99</p>
+                <a href="#" class="button">Order Now</a>
+            </div>
+
+            <div class="menu-card">
+                <h3>Wings & Wedges Box</h3>
+                <p>Spicy wings with seasoned potato wedges.</p>
+                <p class="price">$9.49</p>
+                <a href="#" class="button">Order Now</a>
+            </div>
+
+            <div class="menu-card">
+                <h3>Family Bucket</h3>
+                <p>12 pc chicken, large fries & slaw.</p>
+                <p class="price">$19.99</p>
+                <a href="#" class="button">Order Now</a>
+            </div>
+        </div>
+    </section>
+</main>
+
+</body>
+</html>

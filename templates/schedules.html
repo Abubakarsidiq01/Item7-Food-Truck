@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Schedules</title>
+</head>
+<body>
+    <h1>All Schedules</h1>
+
+    <p><a href="/book_schedule">Book New Schedule</a></p>
+
+    {% if schedules|length == 0 %}
+        <p>No schedules found.</p>
+    {% else %}
+        <table border="1" cellpadding="8">
+            <tr>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Staff Name</th>
+                <th>Staff Email</th>
+                <th>Manager</th>
+                <th>Work Time</th>
+            </tr>
+
+            {% for s in schedules %}
+            <tr>
+                <td>{{ s.date }}</td>
+                <td>{{ s.time }}</td>
+                <td>{{ s.staff_name }}</td>
+                <td>{{ s.staff_email }}</td>
+                <td>{{ s.manager }}</td>
+                <td>{{ s.work_time }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    {% endif %}
+
+    <br>
+    <a href="/">Back to Home</a>
+</body>
+</html>

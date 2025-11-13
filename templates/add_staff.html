@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Add Staff</title>
+</head>
+<body>
+    <h1>Add New Staff Member</h1>
+
+    <form action="/add_staff" method="POST">
+        <label>Email:</label><br>
+        <input type="text" name="email" required><br><br>
+
+        <label>Password:</label><br>
+        <input type="text" name="password" required><br><br>
+
+        <label>First Name:</label><br>
+        <input type="text" name="first" required><br><br>
+
+        <label>Last Name:</label><br>
+        <input type="text" name="last" required><br><br>
+
+        <label>Phone:</label><br>
+        <input type="text" name="phone"><br><br>
+
+        <label>Address:</label><br>
+        <input type="text" name="address"><br><br>
+
+        <label>DOB:</label><br>
+        <input type="text" name="dob" placeholder="01/01/1990"><br><br>
+
+        <label>Sex:</label><br>
+        <input type="text" name="sex" placeholder="M or F"><br><br>
+
+        <input type="submit" value="Add Staff">
+    </form>
+
+    <br>
+    <a href="/staff">Back to Staff List</a>
+</body>
+</html>
