@@ -1,8 +1,12 @@
 # Item7 Food Truck Management System
 
-Flask-based web application for the CS120 “Item7 Food Truck”. The site combines a public ordering experience with an internal, role-based management portal that lets staff manage profiles, shifts, and schedules directly from CSV-backed storage.
+Flask-based web application for the CS120 "Item7 Food Truck". The site combines a public ordering experience with an internal, role-based management portal that lets staff manage profiles, shifts, and schedules directly from CSV-backed storage.
 
 ![Staff Dashboard](static/images/logo-hero.svg)
+
+## 🌐 Live Demo
+
+**Visit the live application:** [https://item7-food-truck.onrender.com](https://item7-food-truck.onrender.com)
 
 ---
 
