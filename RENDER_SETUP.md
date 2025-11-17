@@ -30,13 +30,13 @@
 
 Add these in the "Environment" section:
 
+**Required:**
 ```
 SECRET_KEY=<generate a random 32+ character string>
-SMTP_SERVER=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USERNAME=your-email@gmail.com
-SMTP_PASSWORD=your-gmail-app-password
-FROM_EMAIL=your-email@gmail.com
+```
+
+**Optional:**
+```
 ADMIN_EMAILS=admin1@example.com,admin2@example.com
 FLASK_ENV=production
 ```
@@ -46,10 +46,7 @@ FLASK_ENV=production
 python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-**To get Gmail App Password:**
-1. Go to https://myaccount.google.com/apppasswords
-2. Generate a new app password for "Mail"
-3. Use the 16-character password (no spaces)
+**Note:** OTP email verification is disabled. Users are automatically verified on registration. No SMTP configuration needed.
 
 ### 5. Deploy
 - Click "Create Web Service"
@@ -59,10 +56,9 @@ python -c "import secrets; print(secrets.token_hex(32))"
 ## After Deployment
 
 1. ✅ Test registration
-2. ✅ Test email verification
-3. ✅ Test staff login
-4. ✅ Test schedule booking
-5. ✅ Check application logs for errors
+2. ✅ Test staff login
+3. ✅ Test schedule booking
+4. ✅ Check application logs for errors
 
 ## Common Issues
 
@@ -74,9 +70,7 @@ python -c "import secrets; print(secrets.token_hex(32))"
 - Check environment variables are set
 - Review logs in Render dashboard
 
-**Email not working:**
-- Verify Gmail App Password (not regular password)
-- Check SMTP settings are correct
+**Note:** Email/OTP verification is not enabled. Users are auto-verified on registration.
 
 ## Need Help?
 

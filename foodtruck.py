@@ -384,50 +384,6 @@ class FoodTruck:
         STAFF = list(self.staff)
         logger.info(f"User added to in-memory list: {email}")
 
-    def add_otp_entry(self, email, otp, path="data/otps.csv"):
-        exists, _, writable = self.check_file_permissions(path)
-        if not exists:
-            self.initialize_csv_files()
-        elif not writable:
-            logger.error(f"OTP CSV not writable: {path}")
-            return False
-
-        with open(path, "a", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow(
-                [
-                    _sanitize_for_csv(email),
-                    _sanitize_for_csv(otp),
-                    datetime.utcnow().isoformat(),
-                ]
-            )
-        return True
-
-    def verify_and_consume_otp(self, email, otp, path="data/otps.csv"):
-        exists, readable, writable = self.check_file_permissions(path)
-        if not exists or not readable or not writable:
-            return False
-
-        rows = []
-        match = False
-
-        with open(path, newline="") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                if row.get("Email") == email and row.get("OTP") == otp:
-                    match = True
-                    continue
-                rows.append(row)
-
-        with open(path, "w", newline="") as f:
-            fieldnames = ["Email", "OTP", "Created"]
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            for row in rows:
-                writer.writerow(row)
-
-        return match
-
     # ---------- SCHEDULES (CSV) ----------
 
     def load_schedules_from_csv(self, path="data/schedules.csv"):
@@ -603,7 +559,6 @@ class FoodTruck:
             "data/users.csv": ["Email", "Password", "First_Name", "Last_Name", "Mobile_Number", "Address", "DOB", "Sex", "Role", "Verified"],
             "data/schedules.csv": ["Manager", "Date", "Time", "staff_Email", "staff_Name", "work_Time"],
             "data/orders.csv": ["Order_ID", "Customer_Name", "Customer_Email", "Item", "Allergy_Info", "Is_Safe", "Timestamp"],
-            "data/otps.csv": ["Email", "OTP", "Created"],
         }
 
         for file_path, headers in files_config.items():

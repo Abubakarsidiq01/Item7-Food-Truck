@@ -9,16 +9,8 @@ services:
         value: 3.11.0
       - key: SECRET_KEY
         generateValue: true
-      - key: SMTP_SERVER
-        sync: false
-      - key: SMTP_PORT
-        value: "587"
-      - key: SMTP_USERNAME
-        sync: false
-      - key: SMTP_PASSWORD
-        sync: false
-      - key: FROM_EMAIL
-        sync: false
       - key: ADMIN_EMAILS
         sync: false
+      - key: FLASK_ENV
+        value: production
 

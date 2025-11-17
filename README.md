@@ -20,7 +20,7 @@ Flask-based web application for the CS120 “Item7 Food Truck”. The site combi
   - Schedule (`/staff/schedule`)
   - Profile (`/staff/profile`)
 - **REST endpoints**: e.g., `GET /api/appointments` returns booking data as JSON.
-- **Email verification**: new users receive OTP codes via email (configurable SMTP).
+- **Auto-verification**: new users are automatically verified on registration.
 - **Security improvements**: password hashing (Werkzeug), session checks, login throttling via flash messaging, CSV permission checks, and role enforcement.
 - **Logging**: actions recorded to `ft_management.log`.
 
@@ -44,11 +44,6 @@ cp .env.example .env
 # Then edit .env with your SMTP credentials
 
 # Option 2: Set environment variables manually (Windows PowerShell)
-$env:SMTP_SERVER="smtp.gmail.com"
-$env:SMTP_PORT="587"
-$env:SMTP_USERNAME="your-email@gmail.com"
-$env:SMTP_PASSWORD="your-app-password"
-$env:FROM_EMAIL="your-email@gmail.com"
 $env:SECRET_KEY="your-secret-key"
 $env:ADMIN_EMAILS="boss@example.com"
 
@@ -57,28 +52,14 @@ python app.py
 # Open http://localhost:5000
 ```
 
-### Email Configuration (Required for OTP Verification)
-
-The app uses SMTP to send OTP verification codes. Configure your email settings in the `.env` file:
-
-1. **For Gmail:**
-   - Enable 2-Step Verification in your Google account
-   - Generate an App Password (Security → App passwords)
-   - Use the App Password (16 characters) as `SMTP_PASSWORD`
-
-2. **The `.env` file is automatically loaded** when the app starts. Make sure to:
-   - Copy `.env.example` to `.env`
-   - Fill in your actual SMTP credentials
-   - Never commit `.env` to git (it's already in `.gitignore`)
-
-
 ### Deployment
 
 When deploying to production (Heroku, Railway, Render, etc.):
 
 1. Set environment variables in your hosting platform's dashboard
-2. Use the same variable names: `SMTP_SERVER`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `FROM_EMAIL`, `SECRET_KEY`, `ADMIN_EMAILS`
-3. The app will automatically use these environment variables
+2. Required: `SECRET_KEY` (generate with: `python -c "import secrets; print(secrets.token_hex(32))"`)
+3. Optional: `ADMIN_EMAILS` (comma-separated admin email addresses)
+4. See `DEPLOYMENT.md` or `RENDER_SETUP.md` for detailed deployment instructions
 
 ---
 

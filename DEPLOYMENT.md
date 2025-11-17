@@ -6,7 +6,6 @@ This guide will help you deploy the Item7 Food Truck application on Render.
 
 1. A Render account (sign up at https://render.com)
 2. A GitHub repository with your code (or use Render's Git integration)
-3. Gmail App Password for email sending (if using email verification)
 
 ## Step 1: Prepare Your Repository
 
@@ -38,33 +37,20 @@ In the Render dashboard, go to your service's "Environment" tab and add these va
    - You can use: `python -c "import secrets; print(secrets.token_hex(32))"`
    - Or let Render generate it (it's set to `generateValue: true` in render.yaml)
 
-2. **SMTP_SERVER**
-   - For Gmail: `smtp.gmail.com`
-   - For other providers, use their SMTP server
-
-3. **SMTP_PORT**
-   - For Gmail: `587`
-   - Already set in render.yaml
-
-4. **SMTP_USERNAME**
-   - Your Gmail address (e.g., `your-email@gmail.com`)
-
-5. **SMTP_PASSWORD**
-   - Your Gmail App Password (not your regular password)
-   - Generate one at: https://myaccount.google.com/apppasswords
-
-6. **FROM_EMAIL**
-   - Usually the same as SMTP_USERNAME
-   - The email address that sends verification emails
-
-7. **ADMIN_EMAILS** (Optional)
-   - Comma-separated list of admin email addresses
-   - Example: `admin1@example.com,admin2@example.com`
-
 ### Optional Variables:
 
-- **FLASK_ENV**: Set to `production` for production mode
-- **PORT**: Automatically set by Render (don't override)
+2. **ADMIN_EMAILS** (Optional)
+   - Comma-separated list of admin email addresses
+   - Example: `admin1@example.com,admin2@example.com`
+   - If not set, no users will have admin privileges
+
+3. **FLASK_ENV** (Optional)
+   - Set to `production` for production mode
+   - Already set in render.yaml
+
+4. **PORT**: Automatically set by Render (don't override)
+
+**Note:** OTP email verification is disabled. Users are automatically verified on registration, so no SMTP configuration is needed.
 
 ## Step 5: Deploy
 
@@ -76,7 +62,7 @@ In the Render dashboard, go to your service's "Environment" tab and add these va
 ## Step 6: Verify Deployment
 
 1. Visit your deployed URL
-2. Test registration and email verification
+2. Test registration (users are auto-verified)
 3. Test staff login and schedule booking
 4. Check that CSV files are being created in the `data/` directory
 
@@ -91,9 +77,7 @@ In the Render dashboard, go to your service's "Environment" tab and add these va
 
 ### Email Configuration
 
-- Make sure your Gmail App Password is correct
-- Check that "Less secure app access" is enabled (if required by your Gmail account)
-- Test email sending after deployment
+**Note:** OTP email verification is disabled. Users are automatically verified on registration. No email/SMTP configuration is required.
 
 ### Security
 
@@ -118,10 +102,7 @@ In the Render dashboard, go to your service's "Environment" tab and add these va
 
 ### Email Not Sending
 
-- Verify SMTP credentials are correct
-- Check that App Password is valid (not regular password)
-- Review application logs for SMTP errors
-- Test SMTP connection using the test script
+**Note:** Email/OTP verification is not enabled. Users are auto-verified on registration.
 
 ### Data Not Persisting
 
@@ -140,5 +121,3 @@ In the Render dashboard, go to your service's "Environment" tab and add these va
 For issues specific to:
 - **Render**: Check Render documentation or support
 - **Application**: Review application logs in Render dashboard
-- **Email**: Verify SMTP settings and credentials
-
