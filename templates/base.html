@@ -30,12 +30,10 @@
     <div class="mobile-menu-backdrop" onclick="toggleMobileMenu()"></div>
     <div class="nav-links">
         <a href="{{ url_for('home') }}">Home</a>
-        {% if not is_staff and not is_admin %}
         <a href="{{ url_for('menu_page') }}">Menu</a>
         <a href="{{ url_for('cart_page') }}">
             Cart{% if cart_count %} ({{ cart_count }}){% endif %}
         </a>
-        {% endif %}
         {% if user_email %}
             <a href="{{ url_for('dashboard') }}">Dashboard</a>
             {% if is_staff or is_admin %}

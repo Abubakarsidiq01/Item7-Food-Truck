@@ -825,7 +825,7 @@ td {
 
 .payment-methods {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, 1fr);
     gap: 12px;
     margin-bottom: 24px;
 }
@@ -958,6 +958,12 @@ td {
     
     .payment-methods {
         grid-template-columns: 1fr;
+    }
+    
+    .order-type,
+    .order-address,
+    .order-payment {
+        font-size: 14px;
     }
 }
 
@@ -2536,7 +2542,6 @@ body:has(.staff-layout) main {
     stroke: currentColor;
     stroke-width: 2;
     display: block;
-    vertical-align: middle;
 }
 
 /* Mobile responsive for staff portal */
@@ -2823,6 +2828,18 @@ body:has(.staff-layout) main {
     padding-top: 12px;
     border-top: 1px solid #f2f2f2;
     margin-top: 8px;
+}
+
+.order-type,
+.order-address,
+.order-payment {
+    padding-top: 12px;
+    border-top: 1px solid #f2f2f2;
+    margin-top: 8px;
+}
+
+.order-payment .order-value {
+    font-weight: 600;
 }
 
 .order-actions {

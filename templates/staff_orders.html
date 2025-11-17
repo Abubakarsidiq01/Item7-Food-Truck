@@ -63,6 +63,52 @@
                         <p class="order-value price">${{ "%.2f"|format(order.price|float) }}</p>
                     </div>
                     
+                    {% if order.order_type %}
+                    <div class="order-type">
+                        <p class="order-label">Order Type:</p>
+                        <p class="order-value">
+                            {% if order.order_type == 'delivery' %}
+                                <span style="color: #dc2626;">🚚 Delivery</span>
+                            {% elif order.order_type == 'pickup' %}
+                                <span style="color: #059669;">🏃 Pickup</span>
+                            {% else %}
+                                {{ order.order_type|title }}
+                            {% endif %}
+                        </p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if order.delivery_address and order.order_type == 'delivery' %}
+                    <div class="order-address">
+                        <p class="order-label">Delivery Address:</p>
+                        <p class="order-value">{{ order.delivery_address }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if order.payment_method %}
+                    <div class="order-payment">
+                        <p class="order-label">Payment Method:</p>
+                        <p class="order-value">
+                            {% if order.payment_method == 'card' %}
+                                <span style="color: #1e40af;">💳 Card
+                                {% if order.masked_card %}
+                                    ({{ order.masked_card }})
+                                {% endif %}
+                                {% if order.card_expiry %}
+                                    - Exp: {{ order.card_expiry }}
+                                {% endif %}
+                                </span>
+                            {% elif order.payment_method == 'cash' %}
+                                <span style="color: #059669;">💵 Cash on Delivery</span>
+                            {% elif order.payment_method == 'none' %}
+                                <span style="color: #f59e0b;">⏰ Pay Later - Payment Pending</span>
+                            {% else %}
+                                {{ order.payment_method|title }}
+                            {% endif %}
+                        </p>
+                    </div>
+                    {% endif %}
+                    
                     {% if order.allergy_info and order.allergy_info != 'no allergic' and order.allergy_info != 'N/A' %}
                     <div class="order-allergy {% if order.is_safe == 'NO' %}allergy-unsafe{% else %}allergy-safe{% endif %}">
                         <p class="order-label">

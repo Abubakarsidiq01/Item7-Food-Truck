@@ -759,7 +759,7 @@ def checkout():
         allergy_info = request.form.get("allergy_info", "")
         
         # Payment information
-        payment_method = request.form.get("payment_method", "card")
+        payment_method = request.form.get("payment_method", "none")
         card_name = request.form.get("card_name", "")
         card_number = request.form.get("card_number", "")
         card_expiry = request.form.get("card_expiry", "")
@@ -768,7 +768,7 @@ def checkout():
         
         # Mask card number for security (only store last 4 digits)
         masked_card = ""
-        if card_number:
+        if card_number and payment_method == "card":
             card_digits = card_number.replace(" ", "")
             if len(card_digits) >= 4:
                 masked_card = "**** **** **** " + card_digits[-4:]
@@ -1004,12 +1004,17 @@ def logout():
 
 @app.route("/welcome")
 def welcome():
-    login_redirect = require_login()
-    if login_redirect:
-        return login_redirect
-    user = my_truck.get_user_details(session.get("user_email"))
-    if not user:
-        return redirect(url_for("logout"))
+    # Allow both logged-in and guest users
+    user_email = session.get("user_email")
+    user = None
+    if user_email:
+        user = my_truck.get_user_details(user_email)
+        if not user:
+            # Invalid session, clear it
+            session.pop("user_email", None)
+            session.pop("user_name", None)
+            user = None
+    
     return render_template(
         "welcome.html",
         user=user,

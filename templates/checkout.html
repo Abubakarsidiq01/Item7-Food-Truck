@@ -223,7 +223,7 @@
                         
                         <div class="payment-methods">
                             <label class="payment-method-option">
-                                <input type="radio" name="payment_method" value="card" checked onchange="togglePaymentFields()">
+                                <input type="radio" name="payment_method" value="card" onchange="togglePaymentFields()">
                                 <div class="payment-method-card">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
@@ -243,23 +243,35 @@
                                     <span>Cash on Delivery</span>
                                 </div>
                             </label>
+                            
+                            <label class="payment-method-option">
+                                <input type="radio" name="payment_method" value="none" checked onchange="togglePaymentFields()">
+                                <div class="payment-method-card">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                    </svg>
+                                    <span>Pay Later</span>
+                                </div>
+                            </label>
                         </div>
                         
-                        <div id="card-payment-section">
+                        <div id="card-payment-section" style="display: none;">
                             <div class="form-group-checkout">
-                                <label for="card_name">Name on Card *</label>
+                                <label for="card_name">Name on Card</label>
                                 <input type="text" id="card_name" name="card_name" 
-                                       placeholder="John Doe" required>
+                                       placeholder="John Doe">
                             </div>
                             
                             <div class="form-group-checkout">
-                                <label for="card_number">Card Number *</label>
+                                <label for="card_number">Card Number</label>
                                 <div class="card-input-wrapper">
                                     <input type="text" id="card_number" name="card_number" 
                                            placeholder="1234 5678 9012 3456" 
                                            maxlength="19" 
                                            pattern="[0-9\s]{13,19}"
-                                           oninput="formatCardNumber(this)" required>
+                                           oninput="formatCardNumber(this)">
                                     <div class="card-icons">
                                         <span class="card-icon visa">💳</span>
                                         <span class="card-icon mastercard">💳</span>
@@ -270,21 +282,21 @@
                             
                             <div class="form-row-checkout">
                                 <div class="form-group-checkout">
-                                    <label for="card_expiry">Expiry Date *</label>
+                                    <label for="card_expiry">Expiry Date</label>
                                     <input type="text" id="card_expiry" name="card_expiry" 
                                            placeholder="MM/YY" 
                                            maxlength="5"
                                            pattern="[0-9]{2}/[0-9]{2}"
-                                           oninput="formatExpiry(this)" required>
+                                           oninput="formatExpiry(this)">
                                 </div>
                                 
                                 <div class="form-group-checkout">
-                                    <label for="card_cvv">CVV *</label>
+                                    <label for="card_cvv">CVV</label>
                                     <input type="text" id="card_cvv" name="card_cvv" 
                                            placeholder="123" 
                                            maxlength="4"
                                            pattern="[0-9]{3,4}"
-                                           oninput="formatCVV(this)" required>
+                                           oninput="formatCVV(this)">
                                     <small class="cvv-help">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                             <circle cx="12" cy="12" r="10"></circle>
@@ -313,6 +325,20 @@
                                 <div>
                                     <strong>Cash on Delivery</strong>
                                     <p>Please have exact change ready. Our driver will collect payment upon delivery.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="no-payment-section">
+                            <div class="cash-payment-notice">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                </svg>
+                                <div>
+                                    <strong>Pay Later</strong>
+                                    <p>You can complete payment when your order is ready. Staff will contact you for payment details.</p>
                                 </div>
                             </div>
                         </div>
@@ -808,23 +834,25 @@ function togglePaymentFields() {
     const paymentMethod = document.querySelector('input[name="payment_method"]:checked').value;
     const cardSection = document.getElementById('card-payment-section');
     const cashSection = document.getElementById('cash-payment-section');
+    const noPaymentSection = document.getElementById('no-payment-section');
+    
+    // Hide all sections first
+    cardSection.style.display = 'none';
+    cashSection.style.display = 'none';
+    noPaymentSection.style.display = 'none';
+    
+    // Show relevant section and make fields optional
+    document.getElementById('card_name').required = false;
+    document.getElementById('card_number').required = false;
+    document.getElementById('card_expiry').required = false;
+    document.getElementById('card_cvv').required = false;
     
     if (paymentMethod === 'card') {
         cardSection.style.display = 'block';
-        cashSection.style.display = 'none';
-        // Make card fields required
-        document.getElementById('card_name').required = true;
-        document.getElementById('card_number').required = true;
-        document.getElementById('card_expiry').required = true;
-        document.getElementById('card_cvv').required = true;
-    } else {
-        cardSection.style.display = 'none';
+    } else if (paymentMethod === 'cash') {
         cashSection.style.display = 'block';
-        // Make card fields optional
-        document.getElementById('card_name').required = false;
-        document.getElementById('card_number').required = false;
-        document.getElementById('card_expiry').required = false;
-        document.getElementById('card_cvv').required = false;
+    } else {
+        noPaymentSection.style.display = 'block';
     }
 }
 
@@ -888,52 +916,55 @@ document.getElementById('checkoutForm').addEventListener('submit', function(e) {
         return false;
     }
     
-    // Validate card information for card payments
+    // Validate card information only if card payment is selected AND fields are filled
     if (paymentMethod === 'card') {
         const cardName = document.getElementById('card_name').value.trim();
         const cardNumber = document.getElementById('card_number').value.replace(/\s/g, '');
         const cardExpiry = document.getElementById('card_expiry').value;
         const cardCVV = document.getElementById('card_cvv').value;
         
-        if (!cardName) {
-            e.preventDefault();
-            alert('Please enter the name on card.');
-            document.getElementById('card_name').focus();
-            return false;
-        }
-        
-        if (cardNumber.length < 13 || cardNumber.length > 19) {
-            e.preventDefault();
-            alert('Please enter a valid card number.');
-            document.getElementById('card_number').focus();
-            return false;
-        }
-        
-        if (!/^\d{2}\/\d{2}$/.test(cardExpiry)) {
-            e.preventDefault();
-            alert('Please enter a valid expiry date (MM/YY).');
-            document.getElementById('card_expiry').focus();
-            return false;
-        }
-        
-        // Validate expiry date
-        const [month, year] = cardExpiry.split('/');
-        const expiryDate = new Date(2000 + parseInt(year), parseInt(month) - 1);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        if (expiryDate < today) {
-            e.preventDefault();
-            alert('Card has expired. Please use a valid card.');
-            document.getElementById('card_expiry').focus();
-            return false;
-        }
-        
-        if (cardCVV.length < 3 || cardCVV.length > 4) {
-            e.preventDefault();
-            alert('Please enter a valid CVV.');
-            document.getElementById('card_cvv').focus();
-            return false;
+        // Only validate if user started entering card info
+        if (cardName || cardNumber || cardExpiry || cardCVV) {
+            if (!cardName) {
+                e.preventDefault();
+                alert('Please enter the name on card or select a different payment method.');
+                document.getElementById('card_name').focus();
+                return false;
+            }
+            
+            if (cardNumber.length < 13 || cardNumber.length > 19) {
+                e.preventDefault();
+                alert('Please enter a valid card number or select a different payment method.');
+                document.getElementById('card_number').focus();
+                return false;
+            }
+            
+            if (!/^\d{2}\/\d{2}$/.test(cardExpiry)) {
+                e.preventDefault();
+                alert('Please enter a valid expiry date (MM/YY) or select a different payment method.');
+                document.getElementById('card_expiry').focus();
+                return false;
+            }
+            
+            // Validate expiry date
+            const [month, year] = cardExpiry.split('/');
+            const expiryDate = new Date(2000 + parseInt(year), parseInt(month) - 1);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            if (expiryDate < today) {
+                e.preventDefault();
+                alert('Card has expired. Please use a valid card or select a different payment method.');
+                document.getElementById('card_expiry').focus();
+                return false;
+            }
+            
+            if (cardCVV.length < 3 || cardCVV.length > 4) {
+                e.preventDefault();
+                alert('Please enter a valid CVV or select a different payment method.');
+                document.getElementById('card_cvv').focus();
+                return false;
+            }
         }
     }
     

@@ -3,12 +3,18 @@
 
 <div class="page-header">
     <div>
+        {% if user %}
         <h1 class="page-title">Welcome, {{ user.first }} {{ user.last }}!</h1>
         <p class="page-subtitle">What would you like to do today?</p>
+        {% else %}
+        <h1 class="page-title">Welcome to Item7 Food Truck!</h1>
+        <p class="page-subtitle">Order delicious food from our menu</p>
+        {% endif %}
     </div>
 </div>
 
 <div class="dashboard-grid">
+    {% if user %}
     <div class="card">
         <h2>Your Account</h2>
         <p class="page-subtitle">Email: {{ user.email }}</p>
@@ -20,22 +26,46 @@
             <a class="button secondary" href="{{ url_for('logout') }}">Logout</a>
         </div>
     </div>
+    {% else %}
+    <div class="card">
+        <h2>Get Started</h2>
+        <p class="page-subtitle">Create an account to save your preferences and track orders</p>
+        <div class="form-actions">
+            <a class="button" href="{{ url_for('signup') }}">Sign Up</a>
+            <a class="button secondary" href="{{ url_for('login') }}">Login</a>
+        </div>
+        <p style="margin-top: 16px; font-size: 14px; color: #6b7280;">
+            Or continue as a guest to place orders without an account.
+        </p>
+    </div>
+    {% endif %}
 
     <div class="card">
         <h2>Quick Actions</h2>
         <div class="form-actions">
-            {% if is_staff %}
+            {% if user and is_staff %}
                 <a class="button" href="{{ url_for('staff_dashboard') }}">Open Staff Portal</a>
                 <a class="button secondary" href="{{ url_for('staff_schedule') }}">Book a Shift</a>
             {% else %}
                 <a class="button" href="{{ url_for('menu_page') }}">Browse Menu</a>
                 <a class="button secondary" href="{{ url_for('cart_page') }}">View Cart</a>
             {% endif %}
-            {% if is_admin %}
+            {% if user and is_admin %}
                 <a class="button" href="{{ url_for('admin_dashboard') }}">Admin Dashboard</a>
             {% endif %}
         </div>
     </div>
+    
+    {% if not user %}
+    <div class="card">
+        <h2>Browse Our Menu</h2>
+        <p class="page-subtitle">Check out our delicious food options</p>
+        <div class="form-actions">
+            <a class="button" href="{{ url_for('menu_page') }}">View Full Menu</a>
+            <a class="button secondary" href="{{ url_for('home') }}">Go to Home</a>
+        </div>
+    </div>
+    {% endif %}
 </div>
 
 {% endblock %}
