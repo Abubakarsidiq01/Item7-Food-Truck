@@ -36,7 +36,9 @@
 <section class="shift-panels">
     <div class="panel-card">
         <div class="panel-header">
-            <h2>Today's Shifts</h2>
+            <div>
+                <h2>Today's Shifts</h2>
+            </div>
         </div>
         {% if next_shift and next_shift.date == now().strftime('%Y-%m-%d') %}
             <div class="panel-body shift-highlight">
@@ -54,7 +56,9 @@
 
     <div class="panel-card">
         <div class="panel-header">
-            <h2>Upcoming Shifts</h2>
+            <div>
+                <h2>Upcoming Shifts</h2>
+            </div>
         </div>
         {% if upcoming_schedules %}
             <ul class="upcoming-list">

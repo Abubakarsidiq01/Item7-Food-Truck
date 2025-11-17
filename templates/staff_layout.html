@@ -2,6 +2,12 @@
 {% block content %}
 
 <div class="staff-layout">
+    <button class="staff-menu-toggle" aria-label="Toggle staff menu" onclick="toggleStaffMenu()">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+    <div class="staff-menu-backdrop" onclick="toggleStaffMenu()"></div>
     <aside class="staff-sidebar">
         <div class="staff-brand">
             <div class="staff-logo">I7</div>
@@ -29,6 +35,30 @@
         {% block staff_content %}{% endblock %}
     </main>
 </div>
+
+<script>
+function toggleStaffMenu() {
+    const sidebar = document.querySelector('.staff-sidebar');
+    const backdrop = document.querySelector('.staff-menu-backdrop');
+    const body = document.body;
+    
+    sidebar.classList.toggle('active');
+    backdrop.classList.toggle('active');
+    body.classList.toggle('menu-open');
+}
+
+// Close menu when clicking on a link
+document.addEventListener('DOMContentLoaded', function() {
+    const staffLinks = document.querySelectorAll('.staff-nav a');
+    staffLinks.forEach(link => {
+        link.addEventListener('click', function() {
+            if (window.innerWidth <= 768) {
+                toggleStaffMenu();
+            }
+        });
+    });
+});
+</script>
 
 {% endblock %}
 

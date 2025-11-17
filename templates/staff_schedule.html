@@ -3,8 +3,10 @@
 
 <section class="panel-card">
     <div class="panel-header">
-        <h2>Weekly Schedule</h2>
-        <p style="font-size: 14px; color: #666; margin-top: 8px;">Click on a date to view and book available slots</p>
+        <div>
+            <h2>Weekly Schedule</h2>
+            <p class="portal-note">Click on a date to view and book available slots</p>
+        </div>
     </div>
     <div class="week-calendar">
         {% for day in week_overview %}
@@ -28,7 +30,9 @@
 
 <section class="panel-card" id="open-slots">
     <div class="panel-header">
-        <h2>Available Slots on {{ selected_date.strftime('%A, %B %d, %Y') }}</h2>
+        <div>
+            <h2>Available Slots on {{ selected_date.strftime('%A, %B %d, %Y') }}</h2>
+        </div>
     </div>
     {% if selected_date.strftime('%A') not in ['Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
         <div class="panel-empty">

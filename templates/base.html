@@ -21,6 +21,12 @@
             <span class="brand-text">{{ truck.name or "Item7 Food Truck" }}</span>
         </a>
     </div>
+    <button class="mobile-menu-toggle" aria-label="Toggle menu" onclick="toggleMobileMenu()">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+    <div class="mobile-menu-backdrop" onclick="toggleMobileMenu()"></div>
     <div class="nav-links">
         <a href="{{ url_for('home') }}">Home</a>
         {% if not is_staff and not is_admin %}
@@ -64,6 +70,30 @@
     {% endwith %}
     {% block content %}{% endblock %}
 </main>
+
+<script>
+function toggleMobileMenu() {
+    const navLinks = document.querySelector('.nav-links');
+    const backdrop = document.querySelector('.mobile-menu-backdrop');
+    const body = document.body;
+    
+    navLinks.classList.toggle('active');
+    backdrop.classList.toggle('active');
+    body.classList.toggle('menu-open');
+}
+
+// Close menu when clicking on a link
+document.addEventListener('DOMContentLoaded', function() {
+    const navLinks = document.querySelectorAll('.nav-links a');
+    navLinks.forEach(link => {
+        link.addEventListener('click', function() {
+            if (window.innerWidth <= 768) {
+                toggleMobileMenu();
+            }
+        });
+    });
+});
+</script>
 
 </body>
 </html>
