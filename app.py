@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from foodtruck import FoodTruck, TIME_SLOTS, WORKING_DAYS
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime, timedelta
 import logging
 import os
 
@@ -9,6 +10,13 @@ app = Flask(__name__)
 # Secret key for sessions.
 # TODO: In production this MUST come from an environment variable and the app should be served over HTTPS.
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
+
+# Basic role handling: admin emails are configured via environment for now.
+ADMIN_EMAILS = {
+    e.strip().lower()
+    for e in os.environ.get("ADMIN_EMAILS", "").split(",")
+    if e.strip()
+}
 
 # Backend instance (rename brand)
 my_truck = FoodTruck("Item7 Food Truck", "GSU Campus")
@@ -52,6 +60,12 @@ def save_cart(cart):
     session["cart"] = cart
 
 
+def require_login():
+    if "user_email" not in session:
+        return redirect(url_for("login"))
+    return None
+
+
 @app.context_processor
 def inject_globals():
     cart = get_cart()
@@ -66,6 +80,7 @@ def inject_globals():
         user=user,
         cart_count=cart_count,
         truck=my_truck,
+        now=datetime.now,
     )
 
 
@@ -75,15 +90,18 @@ def inject_globals():
 def home():
     # Redirect to dashboard if logged in, otherwise show home
     if "user_email" in session:
-        return redirect(url_for("dashboard"))
+        # Admins go to the admin console, staff go to the staff portal
+        if "admin" in session:
+            return redirect(url_for("admin_dashboard"))
+        return redirect(url_for("staff_portal"))
     
-    featured_items = my_truck.get_menu_items()[:3]
+    featured_items = my_truck.get_menu_items()[:4]
     return render_template(
         "home.html",
         featured_items=featured_items,
         staff_count=len(my_truck.staff),
         schedule_count=len(my_truck.schedules),
-        title="Home - CS120 Food Truck",
+        title="Home - Item7 Food Truck",
     )
 
 
@@ -91,6 +109,95 @@ def home():
 def menu_page():
     menu_items = my_truck.get_menu_items()
     return render_template("menu.html", menu_items=menu_items, title="Menu")
+
+
+@app.route("/staff_portal")
+def staff_portal():
+    login_redirect = require_login()
+    if login_redirect:
+        return login_redirect
+
+    user_email = session.get("user_email")
+    user = my_truck.get_user_details(user_email)
+    if not user:
+        flash("Account not found. Please sign in again.", "error")
+        return redirect(url_for("login"))
+
+    my_truck.load_schedules_from_csv()
+    my_truck.load_staff_from_csv()
+
+    def parse_schedule(entry):
+        try:
+            schedule_dt = datetime.strptime(f"{entry['date']} {entry['time']}", "%Y-%m-%d %H:%M")
+        except ValueError:
+            schedule_dt = datetime.max
+        return schedule_dt
+
+    user_schedules = [
+        {**s, "datetime": parse_schedule(s)}
+        for s in my_truck.schedules
+        if s.get("staff_email") == user_email
+    ]
+    user_schedules.sort(key=lambda s: s["datetime"])
+
+    upcoming_schedules = [s for s in user_schedules if s["datetime"] >= datetime.now()]
+    next_shift = upcoming_schedules[0] if upcoming_schedules else None
+
+    def next_working_date(start_date=None):
+        current = start_date or datetime.now().date()
+        for _ in range(7):
+            if current.strftime("%A") in WORKING_DAYS:
+                return current
+            current += timedelta(days=1)
+        return datetime.now().date()
+
+    next_available_date = next_working_date()
+    available_slots = my_truck.get_available_slots(user_email, next_available_date.isoformat())
+
+    stats = {
+        "total_shifts": len(user_schedules),
+        "upcoming_shifts": len(upcoming_schedules),
+        "completed_shifts": len([s for s in user_schedules if s["datetime"] < datetime.now()]),
+        "next_available_slots": len(available_slots),
+    }
+
+    week_overview = []
+    today = datetime.now().date()
+    for i in range(7):
+        day = today + timedelta(days=i)
+        label = day.strftime("%A")
+        shifts = [
+            s
+            for s in user_schedules
+            if s["datetime"].date() == day
+        ]
+        week_overview.append(
+            {
+                "date": day,
+                "label": label,
+                "shifts": shifts,
+                "is_working_day": label in WORKING_DAYS,
+            }
+        )
+
+    staff_preview = my_truck.staff[:4]
+
+    api_url = url_for("api_appointments")
+
+    return render_template(
+        "staff_portal.html",
+        user=user,
+        next_shift=next_shift,
+        upcoming_schedules=upcoming_schedules[:5],
+        next_available_date=next_available_date,
+        available_slots=available_slots,
+        stats=stats,
+        week_overview=week_overview,
+        staff_preview=staff_preview,
+        api_url=api_url,
+        time_slots=TIME_SLOTS,
+        title="Staff Portal - Item7",
+    )
 
 
 @app.route("/add_to_cart", methods=["POST"])
@@ -169,12 +276,15 @@ def signup():
     if request.method == "POST":
         email = sanitize_text(request.form.get("email"))
         password = request.form.get("password") or ""
+        account_type = request.form.get("account_type", "staff")
         first = sanitize_text(request.form.get("first"))
         last = sanitize_text(request.form.get("last"))
         phone = sanitize_text(request.form.get("phone"))
         address = sanitize_text(request.form.get("address"))
         dob = sanitize_text(request.form.get("dob"))
         sex = sanitize_text(request.form.get("sex"))
+
+        account_type = request.form.get("account_type", "staff")
 
         # Check if user already exists
         if my_truck.get_user_details(email):
@@ -188,8 +298,15 @@ def signup():
             hashed_password = generate_password_hash(password)
             my_truck.add_staff_to_csv(email, hashed_password, first, last, phone, address, dob, sex)
             logger.info(f"New user registered: {email}")
-            flash("Registration successful! Please login.", "success")
-            return redirect(url_for("login"))
+            if account_type == "staff":
+                session["user_email"] = email
+                session["user_name"] = f"{first} {last}"
+                session.pop("admin", None)
+                flash("Registration successful. Welcome to Item7!", "success")
+                return redirect(url_for("staff_portal"))
+            else:
+                flash("Registration successful. Please log in to continue.", "success")
+                return redirect(url_for("login"))
         except Exception as e:
             logger.error(f"Error during registration: {e}")
             flash("Registration failed. Please try again.", "error")
@@ -200,12 +317,16 @@ def signup():
 def login():
     """User authentication using CSV-based user management"""
     if "user_email" in session:
-        return redirect(url_for("dashboard"))
+        # Already logged in: route by role
+        if "admin" in session:
+            return redirect(url_for("admin_dashboard"))
+        return redirect(url_for("staff_portal"))
     
     error = None
     if request.method == "POST":
         email = sanitize_text(request.form.get("email"))
         password = request.form.get("password") or ""
+        account_type = request.form.get("account_type", "staff")
 
         user = my_truck.get_user_details(email)
         # Handle both hashed and legacy plaintext passwords.
@@ -229,8 +350,19 @@ def login():
         if authenticated:
             session["user_email"] = email
             session["user_name"] = f"{user['first']} {user['last']}"
+            # Set or clear admin flag based on configured admin emails
+            if email.lower() in ADMIN_EMAILS:
+                session["admin"] = email
+            else:
+                session.pop("admin", None)
+
             logger.info(f"User logged in: {email}")
-            return redirect(url_for("dashboard"))
+            # Admins go to admin dashboard, staff to the staff management portal
+            if "admin" in session:
+                return redirect(url_for("admin_dashboard"))
+            if account_type == "staff":
+                return redirect(url_for("staff_portal"))
+            return redirect(url_for("home"))
         else:
             error = "Invalid email or password."
             logger.warning(f"Failed login attempt: {email}")
@@ -251,8 +383,9 @@ def logout():
 @app.route("/dashboard")
 def dashboard():
     """Main user interface - redirects based on user type"""
-    if "user_email" not in session:
-        return redirect(url_for("login"))
+    login_redirect = require_login()
+    if login_redirect:
+        return login_redirect
     
     user_email = session.get("user_email")
     user = my_truck.get_user_details(user_email)

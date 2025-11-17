@@ -21,6 +21,18 @@
             <label for="password">Password</label>
             <input id="password" type="password" name="password" autocomplete="current-password" placeholder="Enter your password" required>
 
+            <div class="auth-role-group">
+                <p class="auth-role-label">Who are you logging in as?</p>
+                <label class="auth-role-option">
+                    <input type="radio" name="account_type" value="staff" checked>
+                    Item7 Staff Member
+                </label>
+                <label class="auth-role-option">
+                    <input type="radio" name="account_type" value="customer">
+                    Customer / Guest
+                </label>
+            </div>
+
             <div class="form-actions auth-actions">
                 <button type="submit" class="button">Login</button>
                 <a href="#" class="link-muted">Forgot password?</a>

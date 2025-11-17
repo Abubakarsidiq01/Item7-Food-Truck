@@ -107,6 +107,15 @@ class FoodTruck:
                 "image": "veggie.svg",
                 "allergens": ["soy"],
             },
+            {
+                "name": "Smoky Tofu Wrap",
+                "description": "Grilled tofu, crisp veggies, spicy mayo in a warm wrap.",
+                "price": 9.25,
+                "category": "Veg",
+                "vegan": True,
+                "image": "veggie.svg",
+                "allergens": ["soy", "gluten"],
+            },
         ]
 
     def get_menu_allergens(self):

@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="staff-layout">
+    <aside class="staff-sidebar">
+        <div class="staff-brand">
+            <div class="staff-logo">I7</div>
+            <div>
+                <p class="brand-title">ITEM7 STAFF</p>
+                <p class="brand-subtitle">Management Portal</p>
+            </div>
+        </div>
+        <nav class="staff-nav">
+            <a href="#dashboard" class="active">Dashboard</a>
+            <a href="#staff">Staff Management</a>
+            <a href="#schedule">Schedule</a>
+            <a href="#profile">My Profile</a>
+        </nav>
+        <div class="staff-user">
+            <div class="staff-user-avatar">{{ user.first[0]|upper }}</div>
+            <div>
+                <p class="staff-user-name">{{ user.first }} {{ user.last }}</p>
+                <p class="staff-user-role">Staff Member</p>
+            </div>
+        </div>
+    </aside>
+
+    <main class="staff-main">
+        <section id="dashboard" class="staff-hero">
+            <div>
+                <p class="hero-label">Item7 Staff Portal</p>
+                <h1>Welcome back, {{ user.first }}!</h1>
+                <p>{{ now().strftime('%A, %B %d, %Y') }} • Manage your team and schedules</p>
+            </div>
+            <img src="{{ url_for('static', filename='images/logo-hero.svg') }}" alt="Item7 badge">
+        </section>
+
+        <section class="staff-stats">
+            <div class="stat-card">
+                <span>Total Shifts</span>
+                <strong>{{ stats.total_shifts }}</strong>
+                <p>All time</p>
+            </div>
+            <div class="stat-card">
+                <span>Upcoming Shifts</span>
+                <strong>{{ stats.upcoming_shifts }}</strong>
+                <p>Next 30 days</p>
+            </div>
+            <div class="stat-card">
+                <span>Hours Completed</span>
+                <strong>{{ stats.completed_shifts * 4 }}</strong>
+                <p>Estimated</p>
+            </div>
+            <div class="stat-card">
+                <span>Open Slots</span>
+                <strong>{{ stats.next_available_slots }}</strong>
+                <p>Next working day</p>
+            </div>
+        </section>
+
+        <section class="shift-panels">
+            <div class="panel-card">
+                <div class="panel-header">
+                    <h2>Today's Shifts</h2>
+                </div>
+                {% if next_shift and next_shift.date == now().strftime('%Y-%m-%d') %}
+                    <div class="panel-body shift-highlight">
+                        <p class="shift-time">{{ next_shift.time }}</p>
+                        <p class="shift-desc">{{ next_shift.work_time }}</p>
+                        <p class="shift-manager">Manager: {{ next_shift.manager }}</p>
+                    </div>
+                {% else %}
+                    <div class="panel-empty">
+                        <span>🕒</span>
+                        <p>No shifts scheduled for today</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="panel-card">
+                <div class="panel-header">
+                    <h2>Upcoming Shifts</h2>
+                </div>
+                {% if upcoming_schedules %}
+                    <ul class="upcoming-list">
+                        {% for shift in upcoming_schedules %}
+                            <li>
+                                <div>
+                                    <strong>{{ shift.date }}</strong>
+                                    <p>{{ shift.time }} · {{ shift.work_time }}</p>
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="panel-empty">
+                        <span>📅</span>
+                        <p>No upcoming shifts</p>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+
+        <section id="schedule" class="schedule-section">
+            <div class="panel-card">
+                <div class="panel-header">
+                    <h2>Weekly Schedule</h2>
+                </div>
+                <div class="week-calendar">
+                    {% for day in week_overview %}
+                        <div class="week-day {{ 'inactive' if not day.is_working_day }}">
+                            <span class="week-label">{{ day.label[:3] }}</span>
+                            <span class="week-date">{{ day.date.day }}</span>
+                            {% if day.shifts %}
+                                <div class="week-dot active"></div>
+                                <small>{{ day.shifts|length }} shift{% if day.shifts|length > 1 %}s{% endif %}</small>
+                            {% else %}
+                                <div class="week-dot"></div>
+                                <small>No shifts</small>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="panel-card">
+                <div class="panel-header">
+                    <h2>Open Slots on {{ next_available_date.strftime('%A, %b %d') }}</h2>
+                </div>
+                {% if available_slots %}
+                    <ul class="schedule-list">
+                        {% for slot in available_slots[:6] %}
+                            <li class="schedule-item">
+                                <span>{{ slot }}</span>
+                                <form action="{{ url_for('book_appointment') }}" method="POST">
+                                    <input type="hidden" name="manager" value="{{ user.first }} {{ user.last }}">
+                                    <input type="hidden" name="date" value="{{ next_available_date.isoformat() }}">
+                                    <input type="hidden" name="time" value="{{ slot }}">
+                                    <input type="hidden" name="staff_email" value="{{ user.email }}">
+                                    <input type="hidden" name="work_time" value="Self-booked shift">
+                                    <button type="submit" class="button secondary">Request slot</button>
+                                </form>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="panel-empty">
+                        <p>No open slots for the next working day.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+
+        <section id="staff" class="staff-directory-panel">
+            <div class="panel-card">
+                <div class="panel-header">
+                    <h2>Staff Directory Preview</h2>
+                </div>
+                {% if staff_preview %}
+                    <div class="portal-staff-grid">
+                        {% for staff in staff_preview %}
+                            <div class="portal-staff-card">
+                                <div class="staff-avatar">{{ staff.first[0]|upper }}</div>
+                                <div>
+                                    <strong>{{ staff.first }} {{ staff.last }}</strong>
+                                    <p>{{ staff.email }}</p>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <p class="portal-note">
+                        Need the full list? Use the Staff Management section or contact your lead for invites.
+                    </p>
+                {% else %}
+                    <p class="portal-note">No staff found.</p>
+                {% endif %}
+            </div>
+
+            <div class="panel-card" id="profile">
+                <div class="panel-header">
+                    <h2>My Profile Snapshot</h2>
+                </div>
+                <div class="portal-profile-card">
+                    <div class="profile-avatar">{{ user.first[0]|upper }}</div>
+                    <div>
+                        <strong>{{ user.first }} {{ user.last }}</strong>
+                        <p>{{ user.email }}</p>
+                        <p>{{ user.phone or 'No phone on file' }}</p>
+                    </div>
+                </div>
+                <p class="portal-note">
+                    Keep your contact, emergency, and address information current for scheduling alerts.
+                </p>
+                <a href="{{ url_for('update_profile') }}" class="button secondary">Edit profile</a>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+{% endblock %}
+

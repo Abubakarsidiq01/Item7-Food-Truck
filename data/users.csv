@@ -1,3 +1,4 @@
 Email,Password,First_Name,Last_Name,Mobile_Number,Address,DOB,Sex
 john@example.com,1234,John,Doe,123-456-7890,123 Main Street,01/01/1990,M
 ryeboah@gmail.com,2344,Richarda,Effah,6142904260,403 Main Street Grambling LA 71245,09/28/2002,M
+bolakaleabubakar74@gmail.com,scrypt:32768:8:1$a8RU0WEFzv82xVwt$45d392451e1a4c518b9648e522ff5f9674cf2066d25a83b12a80fbc26eea068f489ccd651dad12e7e45a271a916d1e7a65ac7740a094df07f031076b20d17e6f,Abubakar-sidiq,Bolakale,3182785904,403 main street grambling stat,07/16/2004,M
