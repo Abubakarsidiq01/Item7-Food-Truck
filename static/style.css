@@ -944,6 +944,21 @@ textarea {
     gap: 22px;
 }
 
+.staff-search {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.staff-search input[type="text"] {
+    flex: 1 1 240px;
+    padding: 10px 12px;
+    border: 1px solid #e4e4e4;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
 .portal-staff-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));

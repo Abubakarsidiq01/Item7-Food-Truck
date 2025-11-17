@@ -247,11 +247,38 @@ def staff_management():
     access_redirect = require_staff_access()
     if access_redirect:
         return access_redirect
-    return render_staff_template(
-        "staff_management.html",
-        active_tab="staff",
-        title="Staff Portal - Staff Management",
+
+    ctx = build_staff_portal_context()
+    if ctx is None:
+        flash("Staff portal is restricted to Item7 staff.", "error")
+        return redirect(url_for("home"))
+
+    query_raw = request.args.get("q", "")
+    query = query_raw.strip().lower()
+
+    def matches(staff):
+        if not query:
+            return True
+        haystacks = [
+            staff.get("first", ""),
+            staff.get("last", ""),
+            staff.get("email", ""),
+            staff.get("phone", ""),
+        ]
+        return any(query in (value or "").lower() for value in haystacks)
+
+    filtered_staff = [staff for staff in ctx["staff_list"] if matches(staff)]
+
+    ctx.update(
+        dict(
+            staff_filtered=filtered_staff,
+            search_query=query_raw,
+            active_tab="staff",
+            title="Staff Portal - Staff Management",
+            api_url=url_for("api_appointments"),
+        )
     )
+    return render_template("staff_management.html", **ctx)
 
 
 @app.route("/staff/schedule")
@@ -581,10 +608,25 @@ def book_schedule_submit():
 @app.route("/book_appointment", methods=["POST"])
 def book_appointment():
     """POST endpoint for booking work times"""
-    if "user_email" not in session:
-        return jsonify({"error": "Authentication required"}), 401
-    
-    data = request.get_json() or request.form
+    expects_json = request.is_json
+
+    def _json_or_redirect(payload, status=200):
+        if expects_json:
+            return jsonify(payload), status
+        else:
+            if payload.get("error"):
+                flash(payload["error"], "error")
+            elif payload.get("message"):
+                flash(payload["message"], "success")
+            return redirect(url_for("staff_schedule"))
+
+    access_redirect = require_staff_access()
+    if access_redirect:
+        if expects_json:
+            return jsonify({"error": "Authentication required"}), 401
+        return access_redirect
+
+    data = request.get_json(silent=True) or request.form
     manager = sanitize_text(data.get("manager", session.get("user_name", "Manager")))
     date_str = sanitize_text(data.get("date"))
     time_slot = sanitize_text(data.get("time"))
@@ -592,14 +634,14 @@ def book_appointment():
     work_time = sanitize_text(data.get("work_time", f"{time_slot} shift"))
 
     if not all([date_str, time_slot, staff_email]):
-        return jsonify({"error": "Missing required fields"}), 400
+        return _json_or_redirect({"error": "Missing required fields"}, status=400)
 
     success, message = my_truck.book_helper(manager, date_str, time_slot, staff_email, work_time)
-    
+
     if success:
-        return jsonify({"success": True, "message": message}), 200
+        return _json_or_redirect({"success": True, "message": message}, status=200)
     else:
-        return jsonify({"success": False, "error": message}), 400
+        return _json_or_redirect({"success": False, "error": message}, status=400)
 
 @app.route("/get_available_slots/<staff>/<date>")
 def get_available_slots(staff, date):

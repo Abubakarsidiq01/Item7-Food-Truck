@@ -3,25 +3,46 @@
 
 <section class="panel-card">
     <div class="panel-header">
-        <h2>Staff Directory</h2>
+        <div>
+            <h2>Staff Directory</h2>
+            <p class="portal-note">Search Item7 teammates and jump into scheduling when needed.</p>
+        </div>
+        <div class="portal-actions">
+            <a href="{{ url_for('staff_schedule') }}" class="button">Book Schedule</a>
+            <a href="{{ url_for('staff_schedule') }}#open-slots" class="button secondary">View Open Slots</a>
+        </div>
     </div>
     <div class="panel-body">
-        {% if staff_list %}
+        <form method="get" class="staff-search">
+            <input type="text" name="q" value="{{ search_query }}" placeholder="Search by name, email, or phone">
+            {% if search_query %}
+                <a href="{{ url_for('staff_management') }}" class="button secondary">Clear</a>
+            {% endif %}
+            <button type="submit" class="button">Search</button>
+        </form>
+
+        {% if staff_filtered %}
             <div class="portal-staff-grid">
-                {% for staff in staff_list %}
+                {% for staff in staff_filtered %}
                     <div class="portal-staff-card">
                         <div class="staff-avatar">{{ staff.first[0]|upper }}</div>
                         <div>
                             <strong>{{ staff.first }} {{ staff.last }}</strong>
-                            <p>{{ staff.email }}</p>
-                            <p>{{ staff.phone }}</p>
+                            <p><a href="mailto:{{ staff.email }}">{{ staff.email }}</a></p>
+                            {% if staff.phone %}
+                                <p><a href="tel:{{ staff.phone }}">{{ staff.phone }}</a></p>
+                            {% endif %}
                         </div>
                     </div>
                 {% endfor %}
             </div>
         {% else %}
             <div class="panel-empty">
-                <p>No staff records found.</p>
+                {% if search_query %}
+                    <p>No staff match “{{ search_query }}”.</p>
+                {% else %}
+                    <p>No staff records found.</p>
+                {% endif %}
             </div>
         {% endif %}
     </div>

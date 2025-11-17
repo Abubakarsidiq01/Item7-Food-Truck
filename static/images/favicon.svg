@@ -1,0 +1,20 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="item7-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff6b5a"/>
+      <stop offset="50%" stop-color="#e63a2a"/>
+      <stop offset="100%" stop-color="#c00024"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="4" y="4" width="56" height="56" rx="16" fill="url(#item7-grad)"/>
+  <circle cx="32" cy="32" r="18" fill="#ffffff" opacity="0.96"/>
+  <text x="32" y="35" text-anchor="middle"
+        font-family="Lexend Deca, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+        font-size="20"
+        font-weight="700"
+        fill="#c00024">
+    I7
+  </text>
+</svg>
+
