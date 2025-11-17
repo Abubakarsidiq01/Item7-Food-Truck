@@ -1,6 +1,2 @@
-Email,Password,First_Name,Last_Name,Mobile_Number,Address,DOB,Sex,Role
-john@example.com,1234,John,Doe,123-456-7890,123 Main Street,01/01/1990,M,staff
-ryeboah@gmail.com,2344,Richarda,Effah,6142904260,403 Main Street Grambling LA 71245,09/28/2002,M,staff
-bolakaleabubakar74@gmail.com,scrypt:32768:8:1$a8RU0WEFzv82xVwt$45d392451e1a4c518b9648e522ff5f9674cf2066d25a83b12a80fbc26eea068f489ccd651dad12e7e45a271a916d1e7a65ac7740a094df07f031076b20d17e6f,Abubakar-sidiq,Bolakale,3182785904,403 main street grambling stat,07/16/2004,M,staff
-bolakaleabubakar837@gmail.com,scrypt:32768:8:1$65kbyk3BGa6egqit$76e9c42aa5021819b9d1b53a76a75130c73004b4819e5ed5c10b1bd65308def61a7b82daf2e85122aa04a866732d0358d3c38aaf4ca5e153b17d3607126e74e2,Abubakar-sidiq,Bolakale,3182785904,403 main street grambling state university,07/16/2004,F,staff
-abolakal@gsumail.gram.edu,scrypt:32768:8:1$l2ZsiMxJoAwyUE83$1ff37fa6271d7490d4db1cc0db8682294f9330575d8fda9753626b835dcb237d14ddb29cd44e7ceff7cfcdda9cdbb34b3f7025c2874af46275f7d87712c7e6a2,Abubakar-sidiq,Bolakale,3182785904,403 main street grambling state university,07/16/2004,M,customer
+Email,Password,First_Name,Last_Name,Mobile_Number,Address,DOB,Sex,Role,Verified
+bolakaleabubakar74@gmail.com,scrypt:32768:8:1$gCHgDT6vys2KUc0C$51c7d6a531e354e8dc648b77d257f19314e99ee2f81490a4be7059c490faa16efb4073f9b8674938d5b2be97f15431a005f03fef23f5bf5b59a5560e7b267be0,Abubakar-sidiq,Bolakale,3182785904,403 main street grambling stat,07/16/2004,M,staff,YES

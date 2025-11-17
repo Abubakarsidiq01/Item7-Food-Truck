@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Welcome, {{ user.first }} {{ user.last }}!</h1>
+        <p class="page-subtitle">What would you like to do today?</p>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <div class="card">
+        <h2>Your Account</h2>
+        <p class="page-subtitle">Email: {{ user.email }}</p>
+        {% if user.phone %}
+        <p>Phone: {{ user.phone }}</p>
+        {% endif %}
+        <div class="form-actions">
+            <a class="button" href="{{ url_for('update_profile') }}">Update Profile</a>
+            <a class="button secondary" href="{{ url_for('logout') }}">Logout</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Quick Actions</h2>
+        <div class="form-actions">
+            {% if is_staff %}
+                <a class="button" href="{{ url_for('staff_dashboard') }}">Open Staff Portal</a>
+                <a class="button secondary" href="{{ url_for('staff_schedule') }}">Book a Shift</a>
+            {% else %}
+                <a class="button" href="{{ url_for('menu_page') }}">Browse Menu</a>
+                <a class="button secondary" href="{{ url_for('cart_page') }}">View Cart</a>
+            {% endif %}
+            {% if is_admin %}
+                <a class="button" href="{{ url_for('admin_dashboard') }}">Admin Dashboard</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+

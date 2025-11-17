@@ -1,6 +1,7 @@
 import csv
 import os
 import logging
+import shutil
 from datetime import datetime, date, timedelta
 
 # Configure logging for the FT management system.
@@ -183,18 +184,95 @@ class FoodTruck:
             for row in rows:
                 writer.writerow(row)
 
+    def _ensure_user_columns(self, path="data/users.csv"):
+        """Ensure the CSV has required columns (Role, Verified). Only runs if columns are missing.
+        This function is SAFE - it preserves all existing data."""
+        exists, readable, writable = self.check_file_permissions(path)
+        if not exists:
+            # File doesn't exist yet, will be created with correct headers by initialize_csv_files
+            return
+        if not readable or not writable:
+            logger.warning(f"Cannot check/update columns for {path}: permissions issue")
+            return
+
+        # Read all data first
+        rows = []
+        fieldnames = []
+        try:
+            with open(path, "r", newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                fieldnames = list(reader.fieldnames or [])
+                required = ["Role", "Verified"]
+                missing = [col for col in required if col not in fieldnames]
+                
+                if not missing:
+                    # All required columns exist, no need to update
+                    return
+                
+                # Read all existing rows - CRITICAL: preserve all data
+                rows = list(reader)
+                logger.info(f"Adding missing columns to {path}: {missing}. Preserving {len(rows)} existing rows.")
+                
+                if len(rows) == 0:
+                    # Empty file except header - just update header
+                    logger.info("File is empty, just updating header")
+                    with open(path, "w", newline="", encoding="utf-8") as f:
+                        new_fieldnames = fieldnames + missing
+                        writer = csv.DictWriter(f, fieldnames=new_fieldnames)
+                        writer.writeheader()
+                    logger.info(f"Updated header with missing columns: {missing}")
+                    return
+                
+        except FileNotFoundError:
+            return
+        except Exception as e:
+            logger.error(f"Error reading CSV to check columns: {e}")
+            return
+
+        # Only update if we have missing columns AND existing data
+        new_fieldnames = fieldnames + missing
+        for row in rows:
+            if "Role" in missing:
+                row["Role"] = row.get("Role", "customer")
+            if "Verified" in missing:
+                row["Verified"] = row.get("Verified", "NO")
+
+        # Write back with new columns - PRESERVE ALL DATA
+        try:
+            # Use a temporary file approach to be extra safe
+            temp_path = path + ".tmp"
+            with open(temp_path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=new_fieldnames)
+                writer.writeheader()
+                for row in rows:
+                    row.setdefault("Role", "customer")
+                    row.setdefault("Verified", "NO")
+                    writer.writerow(row)
+            
+            # Only replace original if temp file was written successfully
+            shutil.move(temp_path, path)
+            logger.info(f"Successfully updated CSV columns in {path}. Preserved {len(rows)} rows.")
+        except Exception as e:
+            logger.error(f"Failed to update CSV columns: {e}")
+            # Try to restore if temp file exists
+            if os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                except:
+                    pass
+            raise
+
     def load_staff_from_csv(self, path="data/users.csv"):
         self.staff = []
         try:
             exists, readable, _ = self.check_file_permissions(path)
             if not exists:
-                # initialize_csv_files will create it with headers when needed
                 return
             if not readable:
                 logger.error(f"Users CSV not readable: {path}")
                 return
 
-            self._ensure_role_column(path)
+            self._ensure_user_columns(path)
 
             with open(path, newline="") as f:
                 reader = csv.DictReader(f)
@@ -209,7 +287,8 @@ class FoodTruck:
                             "address": row["Address"],
                             "dob": row["DOB"],
                             "sex": row["Sex"],
-                            "role": row.get("Role", "staff"),
+                            "role": row.get("Role", "customer"),
+                            "verified": row.get("Verified", "NO"),
                         }
                     )
         except FileNotFoundError:
@@ -230,6 +309,7 @@ class FoodTruck:
         dob,
         sex,
         role="staff",
+        verified="NO",
         path="data/users.csv",
     ):
         exists, _, writable = self.check_file_permissions(path)
@@ -241,14 +321,33 @@ class FoodTruck:
             logger.error(f"Users CSV not writable: {path}")
             raise PermissionError(f"Users CSV not writable: {path}")
 
-        self._ensure_role_column(path)
+        # Ensure columns exist BEFORE adding user (but don't clear data)
+        # Only check, don't modify if columns already exist
+        try:
+            with open(path, "r", newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                fieldnames = reader.fieldnames or []
+                if "Role" not in fieldnames or "Verified" not in fieldnames:
+                    # Only update if columns are missing
+                    self._ensure_user_columns(path)
+        except FileNotFoundError:
+            # File doesn't exist, will be created
+            pass
+        except Exception as e:
+            logger.warning(f"Error checking columns before adding user: {e}")
 
-        with open(path, "a", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow(
-                [
-                    _sanitize_for_csv(email),
-                    _sanitize_for_csv(password),
+        # Normalize email to lowercase for consistency
+        email = email.strip().lower() if email else ""
+        
+        logger.info(f"Adding user to CSV: {email}")
+        
+        try:
+            # Use append mode to add new user
+            with open(path, "a", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f, quoting=csv.QUOTE_MINIMAL)
+                row_data = [
+                    email,  # Store email in lowercase
+                    password,  # Don't sanitize password hash - it contains special chars that need to be preserved
                     _sanitize_for_csv(first),
                     _sanitize_for_csv(last),
                     _sanitize_for_csv(phone),
@@ -256,13 +355,21 @@ class FoodTruck:
                     _sanitize_for_csv(dob),
                     _sanitize_for_csv(sex),
                     _sanitize_for_csv(role),
+                    _sanitize_for_csv(verified),
                 ]
-            )
+                writer.writerow(row_data)
+                f.flush()  # Force write to disk
+                os.fsync(f.fileno())  # Ensure data is written
+                logger.info(f"User data written to CSV: {email}")
+        except Exception as e:
+            logger.error(f"Failed to write user to CSV: {e}")
+            raise
 
+        # Add to in-memory list
         self.staff.append(
             {
-                "email": _sanitize_for_csv(email),
-                "password": _sanitize_for_csv(password),
+                "email": email,  # Store email in lowercase (already normalized above)
+                "password": password,  # Keep password hash as-is, don't sanitize
                 "first": _sanitize_for_csv(first),
                 "last": _sanitize_for_csv(last),
                 "phone": _sanitize_for_csv(phone),
@@ -270,10 +377,56 @@ class FoodTruck:
                 "dob": _sanitize_for_csv(dob),
                 "sex": _sanitize_for_csv(sex),
                 "role": _sanitize_for_csv(role),
+                "verified": _sanitize_for_csv(verified),
             }
         )
         global STAFF
         STAFF = list(self.staff)
+        logger.info(f"User added to in-memory list: {email}")
+
+    def add_otp_entry(self, email, otp, path="data/otps.csv"):
+        exists, _, writable = self.check_file_permissions(path)
+        if not exists:
+            self.initialize_csv_files()
+        elif not writable:
+            logger.error(f"OTP CSV not writable: {path}")
+            return False
+
+        with open(path, "a", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(
+                [
+                    _sanitize_for_csv(email),
+                    _sanitize_for_csv(otp),
+                    datetime.utcnow().isoformat(),
+                ]
+            )
+        return True
+
+    def verify_and_consume_otp(self, email, otp, path="data/otps.csv"):
+        exists, readable, writable = self.check_file_permissions(path)
+        if not exists or not readable or not writable:
+            return False
+
+        rows = []
+        match = False
+
+        with open(path, newline="") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if row.get("Email") == email and row.get("OTP") == otp:
+                    match = True
+                    continue
+                rows.append(row)
+
+        with open(path, "w", newline="") as f:
+            fieldnames = ["Email", "OTP", "Created"]
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            for row in rows:
+                writer.writerow(row)
+
+        return match
 
     # ---------- SCHEDULES (CSV) ----------
 
@@ -447,9 +600,10 @@ class FoodTruck:
         Sets up CSV files with headers if they don't exist.
         """
         files_config = {
-            "data/users.csv": ["Email", "Password", "First_Name", "Last_Name", "Mobile_Number", "Address", "DOB", "Sex", "Role"],
+            "data/users.csv": ["Email", "Password", "First_Name", "Last_Name", "Mobile_Number", "Address", "DOB", "Sex", "Role", "Verified"],
             "data/schedules.csv": ["Manager", "Date", "Time", "staff_Email", "staff_Name", "work_Time"],
-            "data/orders.csv": ["Order_ID", "Customer_Name", "Customer_Email", "Item", "Allergy_Info", "Is_Safe", "Timestamp"]
+            "data/orders.csv": ["Order_ID", "Customer_Name", "Customer_Email", "Item", "Allergy_Info", "Is_Safe", "Timestamp"],
+            "data/otps.csv": ["Email", "OTP", "Created"],
         }
 
         for file_path, headers in files_config.items():
@@ -470,14 +624,24 @@ class FoodTruck:
 
     def get_user_details(self, email):
         """
-        Retrieves user information by email.
+        Retrieves user information by email (case-insensitive).
         Returns user dict or None if not found.
         """
+        if not email:
+            return None
+        email = email.strip().lower()
         self.load_staff_from_csv()
         for user in self.staff:
-            if user["email"] == email:
+            if user["email"].strip().lower() == email:
                 return user
         return None
+    
+    def user_exists(self, email):
+        """
+        Check if a user with this email already exists (case-insensitive).
+        Returns True if user exists, False otherwise.
+        """
+        return self.get_user_details(email) is not None
 
     def is_time_slot_available(self, staff_email, date_str, time_slot):
         """

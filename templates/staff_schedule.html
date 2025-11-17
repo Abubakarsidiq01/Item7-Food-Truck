@@ -4,47 +4,57 @@
 <section class="panel-card">
     <div class="panel-header">
         <h2>Weekly Schedule</h2>
+        <p style="font-size: 14px; color: #666; margin-top: 8px;">Click on a date to view and book available slots</p>
     </div>
     <div class="week-calendar">
         {% for day in week_overview %}
-            <div class="week-day {{ 'inactive' if not day.is_working_day }}">
-                <span class="week-label">{{ day.label[:3] }}</span>
-                <span class="week-date">{{ day.date.day }}</span>
-                {% if day.shifts %}
-                    <div class="week-dot active"></div>
-                    <small>{{ day.shifts|length }} shift{% if day.shifts|length > 1 %}s{% endif %}</small>
-                {% else %}
-                    <div class="week-dot"></div>
-                    <small>No shifts</small>
-                {% endif %}
-            </div>
+            <a href="{{ url_for('staff_schedule', date=day.date.isoformat()) }}" 
+               class="week-day-link {{ 'inactive' if not day.is_working_day }} {{ 'selected' if day.is_selected }}">
+                <div class="week-day {{ 'inactive' if not day.is_working_day }} {{ 'selected' if day.is_selected }}">
+                    <span class="week-label">{{ day.label[:3] }}</span>
+                    <span class="week-date">{{ day.date.day }}</span>
+                    {% if day.shifts %}
+                        <div class="week-dot active"></div>
+                        <small>{{ day.shifts|length }} shift{% if day.shifts|length > 1 %}s{% endif %}</small>
+                    {% else %}
+                        <div class="week-dot"></div>
+                        <small>No shifts</small>
+                    {% endif %}
+                </div>
+            </a>
         {% endfor %}
     </div>
 </section>
 
 <section class="panel-card" id="open-slots">
     <div class="panel-header">
-        <h2>Open Slots on {{ next_available_date.strftime('%A, %b %d') }}</h2>
+        <h2>Available Slots on {{ selected_date.strftime('%A, %B %d, %Y') }}</h2>
     </div>
-    {% if available_slots %}
+    {% if selected_date.strftime('%A') not in ['Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+        <div class="panel-empty">
+            <p>This is not a working day. Please select a working day (Tuesday - Sunday).</p>
+        </div>
+    {% elif available_slots %}
         <ul class="schedule-list">
-            {% for slot in available_slots[:6] %}
+            {% for slot in available_slots %}
                 <li class="schedule-item">
-                    <span>{{ slot }}</span>
-                    <form action="{{ url_for('book_appointment') }}" method="POST">
-                        <input type="hidden" name="manager" value="{{ user.first }} {{ user.last }}">
-                        <input type="hidden" name="date" value="{{ next_available_date.isoformat() }}">
-                        <input type="hidden" name="time" value="{{ slot }}">
-                        <input type="hidden" name="staff_email" value="{{ user.email }}">
-                        <input type="hidden" name="work_time" value="Self-booked shift">
-                        <button type="submit" class="button secondary">Request slot</button>
-                    </form>
+                    <div class="schedule-item-content">
+                        <span class="slot-time">{{ slot }}</span>
+                        <form action="{{ url_for('book_appointment') }}" method="POST" style="display: inline;">
+                            <input type="hidden" name="manager" value="{{ user.first }} {{ user.last }}">
+                            <input type="hidden" name="date" value="{{ selected_date.isoformat() }}">
+                            <input type="hidden" name="time" value="{{ slot }}">
+                            <input type="hidden" name="staff_email" value="{{ user.email }}">
+                            <input type="hidden" name="work_time" value="Self-booked shift">
+                            <button type="submit" class="button secondary">Book This Slot</button>
+                        </form>
+                    </div>
                 </li>
             {% endfor %}
         </ul>
     {% else %}
         <div class="panel-empty">
-            <p>No available time slots for the next working day.</p>
+            <p>No available time slots for {{ selected_date.strftime('%A, %B %d') }}. All slots are booked or this is not a working day.</p>
         </div>
     {% endif %}
 </section>
