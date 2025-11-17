@@ -1,163 +1,149 @@
-# CS120 Food Truck — Documentation & Backend
+# Item7 Food Truck Management System
 
-A small backend utility used by the CS120 Food Truck project. It provides basic in-memory models and CSV-backed persistence for staff, schedules, and customer orders, and includes a simple menu and allergy-safety checking logic.
+Flask-based web application for the CS120 “Item7 Food Truck”. The site combines a public ordering experience with an internal, role-based management portal that lets staff manage profiles, shifts, and schedules directly from CSV-backed storage.
 
-This README summarizes the project purpose, setup, data formats, and examples of how to use the FoodTruck class (foodtruck.py).
+![Staff Dashboard](static/images/logo-hero.svg)
 
-## Table of Contents
-
-- Project Overview
-- Features
-- Repository layout
-- Requirements
-- CSV data formats
-- Usage examples
-- Menu & allergens
-- Allergy check behavior
-- Contributing
-- License
-
-## Project Overview
-
-The `FoodTruck` class (in `foodtruck.py`) is a lightweight backend for handling:
-
-- Staff records (CSV-backed)
-- Schedules and bookings (CSV-backed)
-- Customer orders (CSV-backed)
-- A hardcoded menu (with allergens) and an allergy safety checker
-
-It is designed as a teaching/example codebase for reading/writing CSV data and simple domain logic.
+---
 
 ## Features
 
-- Read and append user (staff) records to `data/users.csv`
-- Read and append schedule bookings to `data/schedules.csv` with double-book prevention
-- Read and append orders to `data/orders.csv`
-- Built-in menu items and allergens mapping
-- A function to check whether a customer's allergy text makes a given order unsafe
+- **Public ordering flow**: view menu, add to cart, checkout with allergy notes.
+- **CSV persistence**: users, schedules, and orders remain simple files (`data/*.csv`), ideal for course environments.
+- **Role-based authentication**:
+  - Customers/guests get the public site only.
+  - Staff accounts gain access to the staff dashboard, schedule, staff directory, and profile pages.
+  - Admins (configured via `ADMIN_EMAILS`) can manage staff and schedules system-wide.
+- **Staff portal (KFC-inspired UI)** with dedicated pages:
+  - Dashboard (`/staff/dashboard`)
+  - Staff Management (`/staff/management`)
+  - Schedule (`/staff/schedule`)
+  - Profile (`/staff/profile`)
+- **REST endpoints**: e.g., `GET /api/appointments` returns booking data as JSON.
+- **Security improvements**: password hashing (Werkzeug), session checks, login throttling via flash messaging, CSV permission checks, and role enforcement.
+- **Logging**: actions recorded to `ft_management.log`.
 
-## Repository layout
+---
 
-(Only the important files are listed — adjust to actual repository contents.)
+## Quick start
 
-- foodtruck.py         — Main backend class for the project
-- data/
-  - users.csv          — Staff CSV (not included by default)
-  - schedules.csv      — Schedule CSV (not included by default)
-  - orders.csv         — Orders CSV (not included by default)
-- static/images/       — Example image files for menu items (referenced by name)
-- README.md            — This file
-- LICENSE              — MIT License (this file)
+### Requirements
 
-## Requirements
+- Python 3.10+
+- Pipenv/venv recommended
 
-- Python 3.7+ (uses standard library: csv, datetime)
-- No external packages required
+```bash
+# Install deps
+pip install -r requirements.txt
 
-## CSV data formats
+# Optional: mark admin emails (comma-separated)
+$env:ADMIN_EMAILS="boss@example.com"
 
-To use the read/append functions, ensure the CSV files exist (or the code will handle missing files gracefully when loading).
-
-Recommended header rows for each CSV:
-
-- data/users.csv (headers used by load_staff_from_csv)
-  - Email,Password,First_Name,Last_Name,Mobile_Number,Address,DOB,Sex
-
-- data/schedules.csv (headers used by load_schedules_from_csv)
-  - Manager,Date,Time,staff_Email,staff_Name,work_Time
-
-- data/orders.csv (headers used by load_orders_from_csv)
-  - Order_ID,Customer_Name,Customer_Email,Item,Allergy_Info,Is_Safe,Timestamp
-
-
-## Usage examples
-
-Basic usage from a Python interpreter:
-
-```python
-from foodtruck import FoodTruck
-
-ft = FoodTruck(name="Campus FoodTruck", location="Quad")
-# Load existing data (if present)
-ft.load_staff_from_csv("data/users.csv")
-ft.load_schedules_from_csv("data/schedules.csv")
-ft.load_orders_from_csv("data/orders.csv")
-
-# Check menu
-menu = ft.get_menu_items()
-for item in menu:
-    print(item["name"], "-", item["price"])
-
-# Add a staff member
-ft.add_staff_to_csv(
-    email="jane.doe@example.com",
-    password="s3cret",
-    first="Jane",
-    last="Doe",
-    phone="555-1234",
-    address="123 Main St",
-    dob="2000-01-01",
-    sex="F",
-    path="data/users.csv"
-)
-
-# Book a schedule (returns True if booking succeeded)
-success = ft.book_schedule(
-    manager="manager@example.com",
-    date="2025-12-01",
-    time="10:00",
-    staff_email="jane.doe@example.com",
-    staff_name="Jane Doe",
-    work_time="10:00-14:00",
-    path="data/schedules.csv"
-)
-
-# Place an order and check safety
-items_text = "Original Chicken Sandwich Combo x1, Veggie Bowl x1"
-allergy_info = "I am allergic to soy"
-is_safe = ft.add_order_to_csv(
-    customer_name="Sam",
-    customer_email="sam@example.com",
-    items_text=items_text,
-    allergy_info=allergy_info,
-    path="data/orders.csv"
-)
-print("Order safe:", is_safe)
+# Run the Flask app
+python app.py
+# Open http://localhost:5000
 ```
 
-## Menu & allergens
+Default secret key is for development only. In production set:
 
-The project includes a built-in menu. Example entries:
+```bash
+$env:SECRET_KEY="super-secret"
+```
 
-- Original Chicken Sandwich Combo — allergens: gluten, wheat, egg
-- Wings & Wedges Box — allergens: gluten, wheat
-- Family Bucket — allergens: gluten, wheat
-- Veggie Bowl — allergens: soy
+---
 
-get_menu_items() returns the full menu with name, description, price, category, vegan flag, image filename, and allergens list.
+## Directory overview
 
-## Allergy check behavior
+```
+app.py                  # Flask routes and auth
+foodtruck.py            # CSV helper class & business rules
+static/style.css        # Shared UI styling + staff portal design
+templates/              # Jinja templates
+  staff_layout.html     # Base layout for staff pages
+  staff_dashboard.html
+  staff_management.html
+  staff_schedule.html
+  staff_profile.html
+data/
+  users.csv             # Email, Password, First_Name... , Role
+  schedules.csv
+  orders.csv
+```
 
-- Method: is_order_safe_for_allergy(items_text, allergy_text)
-- items_text may be a single item name, or a combined string like:
-  "Original Chicken Sandwich Combo x2, Wings & Wedges Box x1"
-- allergy_text is a free-text description of the customer's allergy; the function lower-cases and substring-matches allergens against the allergy text.
-- If any allergen present in the matched menu items appears inside the allergy_text, the order is considered unsafe (returns False).
-- If the allergy text is blank, the order is considered safe (returns True).
+---
 
-Notes and limitations:
-- Matching is substring-based and thus simple; e.g., "soy" will match "soy" but more complex allergy descriptions might require normalization.
-- The function checks menu item names by substring matching in the items_text. Ambiguities in item naming could lead to false negatives/positives.
+## Staff roles & access
 
+`data/users.csv` now stores a `Role` column:
 
+| Role      | Description                                             |
+|-----------|---------------------------------------------------------|
+| `staff`   | Can access `/staff/*` dashboards + public site          |
+| `customer`| Public ordering only (no staff portal)                  |
+| `admin`   | Same as staff plus admin tools (configured via env var) |
 
-## License
+Signup form asks whether the user is staff or customer. Admins can still invite staff through the admin UI.
 
-This project is licensed under the MIT License — see the LICENSE file for details.
+### Navigation behavior
 
-## Contact / Credits
+- Logged-out users see `Home | Menu | Cart | Login | Sign up`.
+- Logged-in customers see `Home | Menu | Cart | Dashboard | Logout`.
+- Logged-in staff/admin additionally see `Staff Portal`.
 
+---
 
-- Created by the above listed contributors for CS120 course work.
+## Staff portal pages
+
+| Path                 | Description                                                |
+|----------------------|------------------------------------------------------------|
+| `/staff/dashboard`   | Hero banner, stats, today’s shifts, upcoming shifts        |
+| `/staff/management`  | Staff directory preview (read from `users.csv`)            |
+| `/staff/schedule`    | Weekly view + real-time open slot booking                  |
+| `/staff/profile`     | Profile snapshot + link to `/update_profile`               |
+
+Every page extends `staff_layout.html`, which provides the left navigation (Dashboard, Staff Management, Schedule, My Profile) and ensures consistent UI colors.
+
+---
+
+## CSV schemas
+
+```
+users.csv
+Email,Password,First_Name,Last_Name,Mobile_Number,Address,DOB,Sex,Role
+
+schedules.csv
+Manager,Date,Time,staff_Email,staff_Name,work_Time
+
+orders.csv
+Order_ID,Customer_Name,Customer_Email,Item,Allergy_Info,Is_Safe,Timestamp
+```
+
+Files are created automatically (with headers) on first run.
+
+---
+
+## API endpoints
+
+| Endpoint                        | Method | Description                                  |
+|---------------------------------|--------|----------------------------------------------|
+| `/api/appointments`            | GET    | Returns all schedules as JSON                |
+| `/book_appointment`            | POST   | Validates and writes a booking to CSV        |
+| `/get_available_slots/<staff>/<date>` | GET | Returns open time slots for staff/date       |
+
+All routes share consistent error handling and JSON structures.
+
+---
+
+## Testing tips
+
+1. Remove `data/*.csv` to start fresh; the app will re-create them.
+2. Sign up twice: once as a customer, once as staff. Confirm that the customer cannot visit `/staff/dashboard`.
+3. Set `ADMIN_EMAILS` and log in as that email to reveal admin nav links.
+
+---
+
+## License & Credits
+
+MIT License. Built for CS120 coursework, inspired by the KFC Shift Manager experience. Contributions welcome via PR.
 
 ---
