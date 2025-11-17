@@ -37,15 +37,19 @@
     <div class="menu-grid">
         {% for item in featured_items %}
         <div class="menu-card">
-            <img src="{{ url_for('static', filename='images/' ~ item.image) }}" alt="{{ item.name }}">
+            <img src="{{ url_for('static', filename='images/' ~ item.image) }}" alt="{{ item.name }}" onerror="this.src='{{ url_for('static', filename='images/' ~ ('drink.svg' if item.category == 'Drinks' else 'dessert.svg' if item.category == 'Dessert' else 'burger.svg')) }}'">
             <h3>{{ item.name }}</h3>
             <p class="menu-meta">
                 {{ item.category }}{% if item.vegan %} · Vegan{% endif %}
             </p>
             <p>{{ item.description }}</p>
             <div class="menu-tags">
-                {% if item.category == "Non-Veg" %}
-                    <span class="menu-tag">Crispy</span>
+                {% if item.category == "Food" %}
+                    <span class="menu-tag">Delicious</span>
+                {% elif item.category == "Drinks" %}
+                    <span class="menu-tag">Refreshing</span>
+                {% elif item.category == "Dessert" %}
+                    <span class="menu-tag">Sweet</span>
                 {% endif %}
                 {% if item.vegan %}
                     <span class="menu-tag">Plant-Based</span>
@@ -61,6 +65,11 @@
         </div>
         {% endfor %}
     </div>
+    {% if not featured_items %}
+    <div style="text-align: center; padding: 40px; color: #6b7280;">
+        <p>Menu items are loading... Please check back soon!</p>
+    </div>
+    {% endif %}
 </section>
 
 <section class="info-grid">

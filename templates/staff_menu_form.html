@@ -1,0 +1,85 @@
+{% extends "staff_layout.html" %}
+{% block staff_content %}
+
+<section class="menu-form-header">
+    <h1 class="menu-form-title">{% if item %}Edit Menu Item{% else %}Add New Menu Item{% endif %}</h1>
+    <a href="{{ url_for('staff_menu') }}" class="back-btn">← Back to Menu</a>
+</section>
+
+<section class="menu-form-section">
+    <form method="POST" action="{% if item %}{{ url_for('staff_menu_edit', item_id=item.item_id) }}{% else %}{{ url_for('staff_menu_add') }}{% endif %}" enctype="multipart/form-data" class="menu-form">
+        <div class="form-group">
+            <label for="name">Item Name *</label>
+            <input type="text" id="name" name="name" value="{% if item %}{{ item.name }}{% endif %}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="description">Description *</label>
+            <textarea id="description" name="description" rows="3" required>{% if item %}{{ item.description }}{% endif %}</textarea>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="price">Price ($) *</label>
+                <input type="number" id="price" name="price" step="0.01" min="0" value="{% if item %}{{ item.price }}{% endif %}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="category">Category *</label>
+                <select id="category" name="category" required>
+                    <option value="Food" {% if item and item.category == 'Food' %}selected{% endif %}>Food</option>
+                    <option value="Drinks" {% if item and item.category == 'Drinks' %}selected{% endif %}>Drinks</option>
+                    <option value="Dessert" {% if item and item.category == 'Dessert' %}selected{% endif %}>Dessert</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group checkbox-group">
+                <label>
+                    <input type="checkbox" name="vegan" value="true" {% if item and item.vegan %}checked{% endif %}>
+                    Vegan
+                </label>
+            </div>
+
+            <div class="form-group checkbox-group">
+                <label>
+                    <input type="checkbox" name="available" value="true" {% if not item or item.available %}checked{% endif %}>
+                    Available
+                </label>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="allergens">Allergens (comma-separated)</label>
+            <input type="text" id="allergens" name="allergens" value="{% if item and item.allergens %}{{ item.allergens|join(', ') }}{% endif %}" placeholder="e.g., gluten, dairy, nuts">
+            <small>Separate multiple allergens with commas</small>
+        </div>
+
+        <div class="form-group">
+            <label for="image_file">Item Image</label>
+            {% if item and item.image %}
+            <div class="current-image">
+                <img src="{{ url_for('static', filename='images/' ~ item.image) }}" alt="Current image" style="max-width: 200px; margin-bottom: 10px;">
+                <p>Current: {{ item.image }}</p>
+            </div>
+            {% endif %}
+            <input type="file" id="image_file" name="image_file" accept="image/*">
+            <small>Upload a new image or leave blank to keep current</small>
+        </div>
+
+        <div class="form-group">
+            <label for="image">Or use existing image filename</label>
+            <input type="text" id="image" name="image" value="{% if item %}{{ item.image }}{% else %}burger.svg{% endif %}" placeholder="burger.svg, drink.svg, dessert.svg, wings.svg, bucket.svg, veggie.svg">
+            <small>Enter filename from static/images folder</small>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="submit-btn">{% if item %}Update Item{% else %}Add Item{% endif %}</button>
+            <a href="{{ url_for('staff_menu') }}" class="cancel-btn">Cancel</a>
+        </div>
+    </form>
+</section>
+
+{% endblock %}
+

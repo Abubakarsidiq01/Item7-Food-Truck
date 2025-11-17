@@ -1,0 +1,162 @@
+{% extends "staff_layout.html" %}
+{% block staff_content %}
+
+<section class="income-header">
+    <div class="income-header-content">
+        <h1 class="income-title">Income Analytics</h1>
+        <p class="income-subtitle">Track revenue and sales performance</p>
+    </div>
+</section>
+
+<!-- Filters -->
+<section class="income-filters-section">
+    <div class="income-filters-container">
+        <h2>Filters</h2>
+        <form method="GET" action="{{ url_for('staff_income') }}" class="income-filters-form" id="incomeFiltersForm">
+            <div class="filter-group">
+                <label>View by Period</label>
+                <div class="period-buttons">
+                    <button type="button" onclick="setPeriod('day')" class="period-btn {% if period == 'day' %}active{% endif %}">Daily</button>
+                    <button type="button" onclick="setPeriod('week')" class="period-btn {% if period == 'week' %}active{% endif %}">Weekly</button>
+                    <button type="button" onclick="setPeriod('month')" class="period-btn {% if period == 'month' %}active{% endif %}">Monthly</button>
+                    <button type="button" onclick="setPeriod('year')" class="period-btn {% if period == 'year' %}active{% endif %}">Yearly</button>
+                    <input type="hidden" name="period" id="periodInput" value="{{ period }}">
+                </div>
+            </div>
+            <div class="filter-group">
+                <label>Date Range</label>
+                <div class="date-range-inputs">
+                    <input type="date" name="start_date" value="{{ start_date }}" placeholder="Start Date" class="date-input">
+                    <span class="date-separator">to</span>
+                    <input type="date" name="end_date" value="{{ end_date }}" placeholder="End Date" class="date-input">
+                    <button type="submit" class="apply-btn">Apply</button>
+                    {% if start_date or end_date %}
+                    <a href="{{ url_for('staff_income', period=period) }}" class="clear-btn">Clear</a>
+                    {% endif %}
+                </div>
+            </div>
+        </form>
+        <script>
+        function setPeriod(p) {
+            document.getElementById('periodInput').value = p;
+            document.getElementById('incomeFiltersForm').submit();
+        }
+        </script>
+    </div>
+</section>
+
+<!-- Total Income Summary -->
+<section class="income-summary">
+    <div class="summary-card">
+        <div class="summary-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="2" x2="12" y2="22"></line>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+            </svg>
+        </div>
+        <div class="summary-content">
+            <span class="summary-label">Total Income</span>
+            <strong class="summary-amount">${{ "%.2f"|format(total_income) }}</strong>
+        </div>
+    </div>
+</section>
+
+<!-- Income Chart -->
+<section class="income-chart-section">
+    <div class="chart-container">
+        <h2>Income Chart</h2>
+        <div class="chart-wrapper">
+            <canvas id="incomeChart"></canvas>
+        </div>
+    </div>
+</section>
+
+<!-- Income Table -->
+<section class="income-table-section">
+    <div class="income-table-container">
+        <h2>Income Breakdown</h2>
+        <table class="income-table">
+            <thead>
+                <tr>
+                    <th>Period</th>
+                    <th>Orders</th>
+                    <th>Revenue</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for key, data in income_data %}
+                <tr>
+                    <td>{{ data.display }}</td>
+                    <td>{{ data.count }}</td>
+                    <td class="revenue-amount">${{ "%.2f"|format(data.amount) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('incomeChart');
+    if (!ctx) return;
+    
+    const incomeData = {{ income_data|tojson|safe }};
+    
+    // Reverse to show oldest to newest
+    const reversedData = incomeData.slice().reverse();
+    const labels = reversedData.map(item => item[1].display);
+    const amounts = reversedData.map(item => item[1].amount);
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Revenue ($)',
+                data: amounts,
+                backgroundColor: 'rgba(220, 38, 38, 0.8)',
+                borderColor: 'rgba(220, 38, 38, 1)',
+                borderWidth: 2,
+                borderRadius: 8,
+                barThickness: 35,
+                maxBarThickness: 40
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return '$' + context.parsed.y.toFixed(2);
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + value.toFixed(0);
+                        }
+                    }
+                },
+                x: {
+                    barPercentage: 0.5,
+                    categoryPercentage: 0.7
+                }
+            }
+        }
+    });
+});
+</script>
+
+{% endblock %}
+

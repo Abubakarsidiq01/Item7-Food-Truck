@@ -9,34 +9,138 @@
 </div>
 <p class="section-subtitle">Browse all items from the food truck and add them to your cart.</p>
 
-<section class="menu-section">
-    <div class="menu-grid">
-        {% for item in menu_items %}
-        <div class="menu-card">
-            <img src="{{ url_for('static', filename='images/' ~ item.image) }}" alt="{{ item.name }}">
-            <h3>{{ item.name }}</h3>
-            <p class="menu-meta">
-                {{ item.category }}{% if item.vegan %} · Vegan{% endif %}
-            </p>
-            <p>{{ item.description }}</p>
-            <div class="menu-tags">
-                {% if item.category == "Non-Veg" %}
-                    <span class="menu-tag">Signature</span>
-                {% endif %}
-                {% if item.vegan %}
-                    <span class="menu-tag">Vegan Friendly</span>
-                {% endif %}
-            </div>
-            <p class="price">${{ "%.2f"|format(item.price) }}</p>
-            <form action="{{ url_for('add_to_cart') }}" method="POST">
-                <input type="hidden" name="item_name" value="{{ item.name }}">
-                <input type="hidden" name="price" value="{{ item.price }}">
-                <input type="hidden" name="redirect_to" value="{{ url_for('menu_page') }}">
-                <button type="submit" class="button">Add to Cart</button>
-            </form>
+{% if items_by_category %}
+    <!-- Food Section -->
+    {% if items_by_category.Food %}
+    <section class="menu-section">
+        <div class="section-header">
+            <h2>🍽️ Food</h2>
         </div>
-        {% endfor %}
-    </div>
-</section>
+        <div class="menu-grid">
+            {% for item in items_by_category.Food %}
+            <div class="menu-card">
+                <img src="{{ url_for('static', filename='images/' ~ item.image) }}" alt="{{ item.name }}" onerror="this.src='{{ url_for('static', filename='images/' ~ ('drink.svg' if item.category == 'Drinks' else 'dessert.svg' if item.category == 'Dessert' else 'burger.svg')) }}'">
+                <h3>{{ item.name }}</h3>
+                <p class="menu-meta">
+                    {% if item.vegan %}Vegan{% else %}Non-Veg{% endif %}
+                </p>
+                <p>{{ item.description }}</p>
+                <div class="menu-tags">
+                    {% if item.vegan %}
+                    <span class="menu-tag">Vegan Friendly</span>
+                    {% else %}
+                    <span class="menu-tag">Signature</span>
+                    {% endif %}
+                </div>
+                <p class="price">${{ "%.2f"|format(item.price) }}</p>
+                <form action="{{ url_for('add_to_cart') }}" method="POST">
+                    <input type="hidden" name="item_name" value="{{ item.name }}">
+                    <input type="hidden" name="price" value="{{ item.price }}">
+                    <input type="hidden" name="redirect_to" value="{{ url_for('menu_page') }}">
+                    <button type="submit" class="button">Add to Cart</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- Drinks Section -->
+    {% if items_by_category.Drinks %}
+    <section class="menu-section">
+        <div class="section-header">
+            <h2>🥤 Drinks & Beverages</h2>
+        </div>
+        <div class="menu-grid">
+            {% for item in items_by_category.Drinks %}
+            <div class="menu-card">
+                <img src="{{ url_for('static', filename='images/' ~ item.image) }}" alt="{{ item.name }}" onerror="this.src='{{ url_for('static', filename='images/' ~ ('drink.svg' if item.category == 'Drinks' else 'dessert.svg' if item.category == 'Dessert' else 'burger.svg')) }}'">
+                <h3>{{ item.name }}</h3>
+                <p class="menu-meta">
+                    {{ item.category }}{% if item.vegan %} · Vegan{% endif %}
+                </p>
+                <p>{{ item.description }}</p>
+                <div class="menu-tags">
+                    {% if item.vegan %}
+                    <span class="menu-tag">Vegan</span>
+                    {% endif %}
+                </div>
+                <p class="price">${{ "%.2f"|format(item.price) }}</p>
+                <form action="{{ url_for('add_to_cart') }}" method="POST">
+                    <input type="hidden" name="item_name" value="{{ item.name }}">
+                    <input type="hidden" name="price" value="{{ item.price }}">
+                    <input type="hidden" name="redirect_to" value="{{ url_for('menu_page') }}">
+                    <button type="submit" class="button">Add to Cart</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- Desserts Section -->
+    {% if items_by_category.Dessert %}
+    <section class="menu-section">
+        <div class="section-header">
+            <h2>🍰 Desserts</h2>
+        </div>
+        <div class="menu-grid">
+            {% for item in items_by_category.Dessert %}
+            <div class="menu-card">
+                <img src="{{ url_for('static', filename='images/' ~ item.image) }}" alt="{{ item.name }}" onerror="this.src='{{ url_for('static', filename='images/veggie.svg') }}'">
+                <h3>{{ item.name }}</h3>
+                <p class="menu-meta">
+                    {{ item.category }}{% if item.vegan %} · Vegan{% endif %}
+                </p>
+                <p>{{ item.description }}</p>
+                <div class="menu-tags">
+                    <span class="menu-tag">Sweet</span>
+                </div>
+                <p class="price">${{ "%.2f"|format(item.price) }}</p>
+                <form action="{{ url_for('add_to_cart') }}" method="POST">
+                    <input type="hidden" name="item_name" value="{{ item.name }}">
+                    <input type="hidden" name="price" value="{{ item.price }}">
+                    <input type="hidden" name="redirect_to" value="{{ url_for('menu_page') }}">
+                    <button type="submit" class="button">Add to Cart</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+{% else %}
+    <!-- Fallback: Show all items if no category grouping -->
+    <section class="menu-section">
+        <div class="menu-grid">
+            {% for item in menu_items %}
+            <div class="menu-card">
+                <img src="{{ url_for('static', filename='images/' ~ item.image) }}" alt="{{ item.name }}" onerror="this.src='{{ url_for('static', filename='images/' ~ ('drink.svg' if item.category == 'Drinks' else 'dessert.svg' if item.category == 'Dessert' else 'burger.svg')) }}'">
+                <h3>{{ item.name }}</h3>
+                <p class="menu-meta">
+                    {{ item.category }}{% if item.vegan %} · Vegan{% endif %}
+                </p>
+                <p>{{ item.description }}</p>
+                <div class="menu-tags">
+                    {% if item.category == "Food" %}
+                        <span class="menu-tag">Signature</span>
+                    {% elif item.category == "Dessert" %}
+                        <span class="menu-tag">Sweet</span>
+                    {% endif %}
+                    {% if item.vegan %}
+                        <span class="menu-tag">Vegan Friendly</span>
+                    {% endif %}
+                </div>
+                <p class="price">${{ "%.2f"|format(item.price) }}</p>
+                <form action="{{ url_for('add_to_cart') }}" method="POST">
+                    <input type="hidden" name="item_name" value="{{ item.name }}">
+                    <input type="hidden" name="price" value="{{ item.price }}">
+                    <input type="hidden" name="redirect_to" value="{{ url_for('menu_page') }}">
+                    <button type="submit" class="button">Add to Cart</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+{% endif %}
 
 {% endblock %}

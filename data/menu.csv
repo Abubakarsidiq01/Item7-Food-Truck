@@ -1,0 +1,16 @@
+Item_ID,Name,Description,Price,Category,Vegan,Image,Allergens,Available
+1,Original Chicken Sandwich Combo,"Crispy chicken sandwich, fries & drink.",7.99,Food,False,burger.svg,"gluten,wheat,egg",True
+2,Wings & Wedges Box,Spicy wings with seasoned potato wedges.,9.49,Food,False,wings.svg,"gluten,wheat",True
+3,Family Bucket,"12 pc chicken, large fries & slaw.",19.99,Food,False,bucket.svg,"gluten,wheat",True
+4,BBQ Chicken Wrap,"Grilled chicken, BBQ sauce, lettuce, and cheese in a warm tortilla.",8.49,Food,False,burger.svg,"gluten,dairy",True
+5,Chicken Quesadilla,"Grilled chicken, cheese, and peppers in a crispy tortilla.",9.99,Food,False,burger.svg,"gluten,dairy",True
+6,Veggie Bowl,Rice bowl with crispy veggies and sauce.,8.49,Food,True,veggie.svg,soy,True
+7,Smoky Tofu Wrap,"Grilled tofu, crisp veggies, spicy mayo in a warm wrap.",9.25,Food,True,veggie.svg,"soy,gluten",True
+8,Garden Salad,"Mixed greens, tomatoes, cucumbers, carrots, and your choice of dressing.",5.99,Food,True,veggie.svg,,True
+9,Veggie Burger,"Plant-based patty with lettuce, tomato, onion, and special sauce.",7.99,Food,True,burger.svg,"gluten,soy",True
+10,Coca-Cola,Classic Coca-Cola soft drink.,2.49,Drinks,True,drink.svg,,True
+11,Orange Juice,Fresh squeezed orange juice.,3.49,Drinks,True,drink.svg,,True
+12,Iced Tea,"Refreshing iced tea, sweetened or unsweetened.",2.99,Drinks,True,drink.svg,,True
+13,Chocolate Milkshake,Creamy chocolate milkshake topped with whipped cream.,4.99,Drinks,False,drink.svg,dairy,True
+14,Chocolate Chip Cookies,"Freshly baked chocolate chip cookies (3pc).",3.99,Dessert,False,dessert.svg,"gluten,dairy,egg",True
+15,Apple Pie Slice,"Warm apple pie slice with vanilla ice cream.",5.99,Dessert,False,dessert.svg,"gluten,dairy",True

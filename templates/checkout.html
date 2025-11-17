@@ -1,37 +1,956 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="page-header">
-    <h1>Checkout</h1>
-</div>
-
-<div class="checkout-layout">
-    <div class="checkout-summary">
-        <h2>Your Order</h2>
-        <p><strong>Items:</strong> {{ items_summary }}</p>
-        <p><strong>Total:</strong> ${{ "%.2f"|format(total) }}</p>
-        <p style="font-size:13px; color:#666; margin-top:10px;">
-            At this step, we record your allergy information. The manager dashboard will highlight
-            any orders that may not be safe to prepare based on our menu allergens.
-        </p>
+<div class="checkout-container">
+    <div class="checkout-header">
+        <h1>Checkout</h1>
+        <p class="checkout-subtitle">Review your order and delivery details</p>
     </div>
 
-    <div class="checkout-form">
-        <h2>Customer Details</h2>
-        <form action="{{ url_for('checkout') }}" method="POST">
-            <label>Customer Name:</label><br>
-            <input type="text" name="customer_name" required><br>
+    <div class="checkout-layout">
+        <!-- Left Side: Order Summary & Delivery Info -->
+        <div class="checkout-main">
+            <form id="checkoutForm" action="{{ url_for('checkout') }}" method="POST">
+                    <!-- Order Type Selection -->
+                    <div class="checkout-section">
+                        <div class="section-header-checkout">
+                            <h2>📦 Order Type</h2>
+                        </div>
+                        
+                        <div class="order-type-options">
+                            <label class="order-type-option">
+                                <input type="radio" name="order_type" value="delivery" id="order_type_delivery" checked onchange="toggleDeliveryFields()">
+                                <div class="order-type-card">
+                                    <div class="order-type-icon">🚚</div>
+                                    <div class="order-type-content">
+                                        <div class="order-type-title">Delivery</div>
+                                        <div class="order-type-subtitle">We'll bring it to you</div>
+                                    </div>
+                                </div>
+                            </label>
+                            
+                            <label class="order-type-option">
+                                <input type="radio" name="order_type" value="pickup" id="order_type_pickup" onchange="toggleDeliveryFields()">
+                                <div class="order-type-card">
+                                    <div class="order-type-icon">🏃</div>
+                                    <div class="order-type-content">
+                                        <div class="order-type-title">Pickup</div>
+                                        <div class="order-type-subtitle">Pick up at our location</div>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Delivery Address Section (shown only for delivery) -->
+                    <section class="checkout-section" id="delivery-section">
+                        <div class="section-header-checkout">
+                            <h2>📍 Delivery Address</h2>
+                            {% if user %}
+                            <span class="profile-badge">Using your profile</span>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="form-group-checkout">
+                            <label for="delivery_address">Street Address *</label>
+                            <div class="address-input-group">
+                                <input type="text" id="delivery_address" name="delivery_address" 
+                                       value="{% if user %}{{ user.address }}{% endif %}" 
+                                       placeholder="Enter your delivery address">
+                                <button type="button" class="map-btn" onclick="openMapModal()">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                        <circle cx="12" cy="10" r="3"></circle>
+                                    </svg>
+                                    Choose on Map
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <input type="hidden" id="address_lat" name="address_lat">
+                        <input type="hidden" id="address_lng" name="address_lng">
+                        
+                        <!-- Inline Map Display -->
+                        <div class="form-group-checkout">
+                            <div class="map-header-row">
+                                <label>Select Your Location on Map</label>
+                                <button type="button" class="detect-location-btn" onclick="detectUserLocation(inlineMap, true)">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                        <circle cx="12" cy="10" r="3"></circle>
+                                    </svg>
+                                    Detect My Location
+                                </button>
+                            </div>
+                            <div id="location-loading" class="location-status" style="display: none;">
+                                <span class="loading-spinner"></span>
+                                Detecting your location...
+                            </div>
+                            <div id="location-error" class="location-status error" style="display: none;"></div>
+                            <div id="inlineMap" style="width: 100%; height: 350px; border-radius: 10px; overflow: hidden; border: 1.5px solid #e5e7eb;"></div>
+                            <div class="map-search-container">
+                                <input type="text" id="inlineMapSearch" placeholder="Search for an address..." class="map-search-input-inline">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group-checkout">
+                            <label for="delivery_instructions">Delivery Instructions (Optional)</label>
+                            <textarea id="delivery_instructions" name="delivery_instructions" rows="2" 
+                                      placeholder="e.g., Leave at door, Ring doorbell, etc."></textarea>
+                        </div>
+                    </section>
+                    
+                    <!-- Pickup Instructions (shown only for pickup) -->
+                    <section class="checkout-section" id="pickup-section" style="display: none;">
+                        <div class="section-header-checkout">
+                            <h2>📍 Pickup Information</h2>
+                        </div>
+                        <div class="form-group-checkout">
+                            <label for="pickup_instructions">Pickup Instructions (Optional)</label>
+                            <textarea id="pickup_instructions" name="pickup_instructions" rows="2" 
+                                      placeholder="e.g., Call when ready, I'll be in a red car, etc."></textarea>
+                            <small>Our food truck location will be shared after order confirmation.</small>
+                        </div>
+                    </section>
 
-            <label>Customer Email:</label><br>
-            <input type="email" name="customer_email" required><br>
+                    <!-- Contact Information -->
+                    <div class="checkout-section">
+                        <div class="section-header-checkout">
+                            <h2>📞 Contact Information</h2>
+                        </div>
+                        
+                        <div class="form-row-checkout">
+                            <div class="form-group-checkout">
+                                <label for="customer_name">Full Name *</label>
+                                <input type="text" id="customer_name" name="customer_name" 
+                                       value="{% if user %}{{ user.first }} {{ user.last }}{% endif %}" 
+                                       required>
+                            </div>
+                            
+                            <div class="form-group-checkout">
+                                <label for="customer_phone">Phone Number *</label>
+                                <input type="tel" id="customer_phone" name="customer_phone" 
+                                       value="{% if user %}{{ user.phone }}{% endif %}" 
+                                       placeholder="(555) 123-4567" required>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group-checkout">
+                            <label for="customer_email">Email Address *</label>
+                            <input type="email" id="customer_email" name="customer_email" 
+                                   value="{% if user %}{{ user.email }}{% endif %}" 
+                                   required>
+                        </div>
+                    </div>
 
-            <label>Allergies (if any):</label><br>
-            <textarea name="allergy_info" rows="4"
-                      placeholder="Example: I am allergic to gluten, nuts, milk"></textarea><br>
+                    <!-- Tip Selection -->
+                    <div class="checkout-section">
+                        <div class="section-header-checkout">
+                            <h2>💵 Add a Tip</h2>
+                            <span class="optional-badge">Optional</span>
+                        </div>
+                        
+                        <div class="tip-options">
+                            <button type="button" class="tip-btn" data-tip="0.00" onclick="selectTip(0.00)">
+                                No Tip
+                            </button>
+                            <button type="button" class="tip-btn" data-tip="10" onclick="selectTip(10)">
+                                10%
+                            </button>
+                            <button type="button" class="tip-btn" data-tip="15" onclick="selectTip(15)">
+                                15%
+                            </button>
+                            <button type="button" class="tip-btn" data-tip="18" onclick="selectTip(18)">
+                                18%
+                            </button>
+                            <button type="button" class="tip-btn" data-tip="20" onclick="selectTip(20)">
+                                20%
+                            </button>
+                            <button type="button" class="tip-btn" data-tip="25" onclick="selectTip(25)">
+                                25%
+                            </button>
+                        </div>
+                        
+                        <div class="form-group-checkout" style="margin-top: 16px;">
+                            <label for="custom_tip">Or enter custom tip amount ($)</label>
+                            <input type="number" id="custom_tip" name="custom_tip" step="0.01" min="0" 
+                                   placeholder="0.00" oninput="selectCustomTip(this.value)">
+                        </div>
+                        
+                        <input type="hidden" id="tip_amount" name="tip_amount" value="0.00">
+                    </div>
 
-            <button type="submit" class="button">Place Order</button>
-        </form>
+                    <!-- Allergy Information -->
+                    <div class="checkout-section">
+                        <div class="section-header-checkout">
+                            <h2>⚠️ Allergy Information</h2>
+                            {% if cart_allergens %}
+                            <span class="allergy-warning-badge">⚠️ Contains Allergens</span>
+                            {% endif %}
+                        </div>
+                        
+                        {% if cart_allergens %}
+                        <div class="allergy-alert">
+                            <strong>⚠️ Warning:</strong> Your order contains the following allergens:
+                            <div class="allergen-tags">
+                                {% for allergen in cart_allergens %}
+                                <span class="allergen-tag">{{ allergen }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="form-group-checkout">
+                            <label for="allergy_info">Do you have any allergies? (Please list all)</label>
+                            <textarea id="allergy_info" name="allergy_info" rows="4" 
+                                      placeholder="Example: I am allergic to gluten, nuts, milk, shellfish"></textarea>
+                            <small>This helps us ensure your order is prepared safely.</small>
+                        </div>
+                    </div>
+
+                    <!-- Payment Information -->
+                    <div class="checkout-section">
+                        <div class="section-header-checkout">
+                            <h2>💳 Payment Information</h2>
+                            <div class="payment-security-badge">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                </svg>
+                                Secure Payment
+                            </div>
+                        </div>
+                        
+                        <div class="payment-methods">
+                            <label class="payment-method-option">
+                                <input type="radio" name="payment_method" value="card" checked onchange="togglePaymentFields()">
+                                <div class="payment-method-card">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                                        <line x1="1" y1="10" x2="23" y2="10"></line>
+                                    </svg>
+                                    <span>Credit/Debit Card</span>
+                                </div>
+                            </label>
+                            
+                            <label class="payment-method-option">
+                                <input type="radio" name="payment_method" value="cash" onchange="togglePaymentFields()">
+                                <div class="payment-method-card">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <line x1="12" y1="1" x2="12" y2="23"></line>
+                                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                    </svg>
+                                    <span>Cash on Delivery</span>
+                                </div>
+                            </label>
+                        </div>
+                        
+                        <div id="card-payment-section">
+                            <div class="form-group-checkout">
+                                <label for="card_name">Name on Card *</label>
+                                <input type="text" id="card_name" name="card_name" 
+                                       placeholder="John Doe" required>
+                            </div>
+                            
+                            <div class="form-group-checkout">
+                                <label for="card_number">Card Number *</label>
+                                <div class="card-input-wrapper">
+                                    <input type="text" id="card_number" name="card_number" 
+                                           placeholder="1234 5678 9012 3456" 
+                                           maxlength="19" 
+                                           pattern="[0-9\s]{13,19}"
+                                           oninput="formatCardNumber(this)" required>
+                                    <div class="card-icons">
+                                        <span class="card-icon visa">💳</span>
+                                        <span class="card-icon mastercard">💳</span>
+                                        <span class="card-icon amex">💳</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row-checkout">
+                                <div class="form-group-checkout">
+                                    <label for="card_expiry">Expiry Date *</label>
+                                    <input type="text" id="card_expiry" name="card_expiry" 
+                                           placeholder="MM/YY" 
+                                           maxlength="5"
+                                           pattern="[0-9]{2}/[0-9]{2}"
+                                           oninput="formatExpiry(this)" required>
+                                </div>
+                                
+                                <div class="form-group-checkout">
+                                    <label for="card_cvv">CVV *</label>
+                                    <input type="text" id="card_cvv" name="card_cvv" 
+                                           placeholder="123" 
+                                           maxlength="4"
+                                           pattern="[0-9]{3,4}"
+                                           oninput="formatCVV(this)" required>
+                                    <small class="cvv-help">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                        </svg>
+                                        3-4 digits on back of card
+                                    </small>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group-checkout">
+                                <label for="billing_address">Billing Address (Optional)</label>
+                                <input type="text" id="billing_address" name="billing_address" 
+                                       placeholder="Same as delivery address">
+                            </div>
+                        </div>
+                        
+                        <div id="cash-payment-section" style="display: none;">
+                            <div class="cash-payment-notice">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                </svg>
+                                <div>
+                                    <strong>Cash on Delivery</strong>
+                                    <p>Please have exact change ready. Our driver will collect payment upon delivery.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="checkout-actions">
+                        <a href="{{ url_for('cart_page') }}" class="back-to-cart-btn">← Back to Cart</a>
+                        <button type="submit" class="place-order-btn">
+                            <span>Place Order</span>
+                            <span class="order-total" id="order-total-btn">${{ "%.2f"|format(total) }}</span>
+                        </button>
+                    </div>
+                </form>
+        </div>
+
+        <!-- Right Side: Order Summary -->
+        <div class="checkout-sidebar">
+            <div class="order-summary-card">
+                <h2>Order Summary</h2>
+                
+                <div class="order-items-list">
+                    {% for name, item in cart.items() %}
+                    <div class="order-item-row">
+                        <div class="item-info">
+                            <span class="item-name">{{ name }}</span>
+                            <span class="item-qty">×{{ item.qty }}</span>
+                        </div>
+                        <span class="item-price">${{ "%.2f"|format(item.price * item.qty) }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <div class="order-totals">
+                    <div class="total-row">
+                        <span>Subtotal</span>
+                        <span id="summary-subtotal">${{ "%.2f"|format(total) }}</span>
+                    </div>
+                    <div class="total-row" id="delivery-fee-row">
+                        <span>Delivery Fee</span>
+                        <span id="summary-delivery-fee">$0.00</span>
+                    </div>
+                    <div class="total-row" id="tip-row" style="display: none;">
+                        <span>Tip</span>
+                        <span id="summary-tip">$0.00</span>
+                    </div>
+                    <div class="total-row total-final">
+                        <span>Total</span>
+                        <span id="summary-total">${{ "%.2f"|format(total) }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+<!-- Map Modal -->
+<div id="mapModal" class="map-modal">
+    <div class="map-modal-content">
+        <div class="map-modal-header">
+            <h3>Choose Your Delivery Location</h3>
+            <button class="close-map-btn" onclick="closeMapModal()">×</button>
+        </div>
+        <div class="map-container">
+            <div id="map" style="width: 100%; height: 400px;"></div>
+        </div>
+        <div class="map-controls">
+            <input type="text" id="mapSearch" placeholder="Search for an address..." class="map-search-input">
+            <button type="button" class="confirm-location-btn" onclick="confirmLocation()">Confirm Location</button>
+        </div>
+    </div>
+</div>
+
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+let inlineMap;
+let inlineMarker;
+let modalMap;
+let modalMarker;
+let selectedLocation = null;
+
+function updateAddressFromLocation(lat, lng) {
+    // Reverse geocode to get address
+    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.display_name) {
+                document.getElementById('delivery_address').value = data.display_name;
+                document.getElementById('address_lat').value = lat;
+                document.getElementById('address_lng').value = lng;
+            }
+        })
+        .catch(err => console.error('Geocoding error:', err));
+}
+
+function initInlineMap() {
+    // Initialize inline map centered on a default location
+    inlineMap = L.map('inlineMap').setView([33.7490, -84.3880], 13);
+    
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+    }).addTo(inlineMap);
+    
+    // Add click handler to inline map
+    inlineMap.on('click', function(e) {
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+        
+        if (inlineMarker) {
+            inlineMap.removeLayer(inlineMarker);
+        }
+        
+        inlineMarker = L.marker([lat, lng]).addTo(inlineMap);
+        selectedLocation = { lat, lng };
+        updateAddressFromLocation(lat, lng);
+    });
+    
+    // Automatically detect user's current location
+    detectUserLocation(inlineMap, true);
+}
+
+function openMapModal() {
+    document.getElementById('mapModal').style.display = 'flex';
+    if (!modalMap) {
+        initModalMap();
+    } else {
+        // Sync with inline map if it exists
+        if (inlineMap && selectedLocation) {
+            modalMap.setView([selectedLocation.lat, selectedLocation.lng], 15);
+            if (modalMarker) {
+                modalMap.removeLayer(modalMarker);
+            }
+            modalMarker = L.marker([selectedLocation.lat, selectedLocation.lng]).addTo(modalMap);
+        }
+    }
+}
+
+function closeMapModal() {
+    document.getElementById('mapModal').style.display = 'none';
+}
+
+function initModalMap() {
+    // Initialize modal map
+    modalMap = L.map('map').setView([33.7490, -84.3880], 13);
+    
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+    }).addTo(modalMap);
+    
+    // Add click handler to modal map
+    modalMap.on('click', function(e) {
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+        
+        if (modalMarker) {
+            modalMap.removeLayer(modalMarker);
+        }
+        
+        modalMarker = L.marker([lat, lng]).addTo(modalMap);
+        selectedLocation = { lat, lng };
+        updateAddressFromLocation(lat, lng);
+        
+        // Also update inline map if it exists
+        if (inlineMap) {
+            inlineMap.setView([lat, lng], 15);
+            if (inlineMarker) {
+                inlineMap.removeLayer(inlineMarker);
+            }
+            inlineMarker = L.marker([lat, lng]).addTo(inlineMap);
+        }
+    });
+    
+    // Automatically detect user's current location
+    detectUserLocation(modalMap, false);
+}
+
+function detectUserLocation(targetMap, isInline) {
+    if (!navigator.geolocation) {
+        console.log('Geolocation is not supported by this browser.');
+        return;
+    }
+    
+    // Show loading indicator
+    const loadingMsg = document.getElementById('location-loading');
+    if (loadingMsg) {
+        loadingMsg.style.display = 'block';
+    }
+    
+    // Request location with options for better accuracy
+    const options = {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+    };
+    
+    navigator.geolocation.getCurrentPosition(
+        function(position) {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            
+            // Center map on user's location
+            targetMap.setView([lat, lng], 15);
+            
+            // Add or update marker
+            if (isInline) {
+                if (inlineMarker) {
+                    inlineMap.removeLayer(inlineMarker);
+                }
+                inlineMarker = L.marker([lat, lng]).addTo(inlineMap);
+            } else {
+                if (modalMarker) {
+                    modalMap.removeLayer(modalMarker);
+                }
+                modalMarker = L.marker([lat, lng]).addTo(modalMap);
+            }
+            
+            selectedLocation = { lat, lng };
+            updateAddressFromLocation(lat, lng);
+            
+            // Hide loading indicator
+            if (loadingMsg) {
+                loadingMsg.style.display = 'none';
+            }
+            
+            // Sync with other map if it exists
+            if (isInline && modalMap) {
+                modalMap.setView([lat, lng], 15);
+                if (modalMarker) {
+                    modalMap.removeLayer(modalMarker);
+                }
+                modalMarker = L.marker([lat, lng]).addTo(modalMap);
+            } else if (!isInline && inlineMap) {
+                inlineMap.setView([lat, lng], 15);
+                if (inlineMarker) {
+                    inlineMap.removeLayer(inlineMarker);
+                }
+                inlineMarker = L.marker([lat, lng]).addTo(inlineMap);
+            }
+        },
+        function(error) {
+            // Hide loading indicator
+            if (loadingMsg) {
+                loadingMsg.style.display = 'none';
+            }
+            
+            // Handle different error types
+            let errorMsg = 'Unable to detect your location. ';
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    errorMsg += 'Please allow location access or select your location manually on the map.';
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    errorMsg += 'Location information is unavailable. Please select your location manually.';
+                    break;
+                case error.TIMEOUT:
+                    errorMsg += 'Location request timed out. Please select your location manually.';
+                    break;
+                default:
+                    errorMsg += 'An unknown error occurred. Please select your location manually.';
+                    break;
+            }
+            
+            // Show error message
+            const errorElement = document.getElementById('location-error');
+            if (errorElement) {
+                errorElement.textContent = errorMsg;
+                errorElement.style.display = 'block';
+                // Hide error after 5 seconds
+                setTimeout(() => {
+                    errorElement.style.display = 'none';
+                }, 5000);
+            }
+            
+            console.log('Geolocation error:', error);
+        },
+        options
+    );
+}
+
+// Address search functionality
+function searchAddress(query, targetMap, targetMarker) {
+    if (query.length > 3) {
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.length > 0) {
+                    const result = data[0];
+                    const lat = parseFloat(result.lat);
+                    const lng = parseFloat(result.lon);
+                    
+                    targetMap.setView([lat, lng], 15);
+                    
+                    if (targetMarker) {
+                        targetMap.removeLayer(targetMarker);
+                    }
+                    
+                    const newMarker = L.marker([lat, lng]).addTo(targetMap);
+                    if (targetMap === inlineMap) {
+                        inlineMarker = newMarker;
+                    } else {
+                        modalMarker = newMarker;
+                    }
+                    
+                    selectedLocation = { lat, lng };
+                    document.getElementById('delivery_address').value = result.display_name;
+                    document.getElementById('address_lat').value = lat;
+                    document.getElementById('address_lng').value = lng;
+                    
+                    // Sync with other map
+                    if (targetMap === inlineMap && modalMap) {
+                        modalMap.setView([lat, lng], 15);
+                        if (modalMarker) {
+                            modalMap.removeLayer(modalMarker);
+                        }
+                        modalMarker = L.marker([lat, lng]).addTo(modalMap);
+                    } else if (targetMap === modalMap && inlineMap) {
+                        inlineMap.setView([lat, lng], 15);
+                        if (inlineMarker) {
+                            inlineMap.removeLayer(inlineMarker);
+                        }
+                        inlineMarker = L.marker([lat, lng]).addTo(inlineMap);
+                    }
+                }
+            })
+            .catch(err => console.error('Search error:', err));
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize inline map immediately
+    initInlineMap();
+    
+    // Inline map search
+    const inlineSearchInput = document.getElementById('inlineMapSearch');
+    if (inlineSearchInput) {
+        let searchTimeout;
+        inlineSearchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            const query = this.value;
+            searchTimeout = setTimeout(() => {
+                if (inlineMap) {
+                    searchAddress(query, inlineMap, inlineMarker);
+                }
+            }, 500);
+        });
+    }
+    
+    // Modal map search
+    const modalSearchInput = document.getElementById('mapSearch');
+    if (modalSearchInput) {
+        let searchTimeout;
+        modalSearchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            const query = this.value;
+            searchTimeout = setTimeout(() => {
+                if (modalMap) {
+                    searchAddress(query, modalMap, modalMarker);
+                }
+            }, 500);
+        });
+    }
+});
+
+function confirmLocation() {
+    if (selectedLocation) {
+        document.getElementById('address_lat').value = selectedLocation.lat;
+        document.getElementById('address_lng').value = selectedLocation.lng;
+        closeMapModal();
+    } else {
+        alert('Please select a location on the map first.');
+    }
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('mapModal');
+    if (event.target == modal) {
+        closeMapModal();
+    }
+}
+
+// Order Type Toggle
+function toggleDeliveryFields() {
+    const orderType = document.querySelector('input[name="order_type"]:checked').value;
+    const deliverySection = document.getElementById('delivery-section');
+    const pickupSection = document.getElementById('pickup-section');
+    const deliveryAddress = document.getElementById('delivery_address');
+    
+    if (orderType === 'delivery') {
+        deliverySection.style.display = 'block';
+        pickupSection.style.display = 'none';
+        deliveryAddress.required = true;
+        document.getElementById('delivery-fee-row').style.display = 'flex';
+    } else {
+        deliverySection.style.display = 'none';
+        pickupSection.style.display = 'block';
+        deliveryAddress.required = false;
+        document.getElementById('delivery-fee-row').style.display = 'none';
+    }
+    
+    updateOrderSummary();
+}
+
+// Tip Selection
+let selectedTipPercent = null;
+let customTipAmount = null;
+const subtotal = {{ total }};
+
+function selectTip(percent) {
+    selectedTipPercent = percent;
+    customTipAmount = null;
+    document.getElementById('custom_tip').value = '';
+    
+    // Update button styles
+    document.querySelectorAll('.tip-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (parseFloat(btn.getAttribute('data-tip')) === percent) {
+            btn.classList.add('active');
+        }
+    });
+    
+    // Calculate tip
+    let tipAmount = 0;
+    if (percent > 0) {
+        tipAmount = (subtotal * percent / 100);
+    }
+    
+    document.getElementById('tip_amount').value = tipAmount.toFixed(2);
+    updateOrderSummary();
+}
+
+function selectCustomTip(value) {
+    const amount = parseFloat(value) || 0;
+    customTipAmount = amount;
+    selectedTipPercent = null;
+    
+    // Clear button selections
+    document.querySelectorAll('.tip-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    document.getElementById('tip_amount').value = amount.toFixed(2);
+    updateOrderSummary();
+}
+
+// Update Order Summary
+function updateOrderSummary() {
+    const orderType = document.querySelector('input[name="order_type"]:checked').value;
+    const tipAmount = parseFloat(document.getElementById('tip_amount').value) || 0;
+    const deliveryFee = orderType === 'delivery' ? 2.99 : 0.00; // $2.99 delivery fee
+    
+    const subtotalEl = document.getElementById('summary-subtotal');
+    const deliveryFeeEl = document.getElementById('summary-delivery-fee');
+    const tipEl = document.getElementById('summary-tip');
+    const totalEl = document.getElementById('summary-total');
+    const tipRow = document.getElementById('tip-row');
+    const deliveryFeeRow = document.getElementById('delivery-fee-row');
+    
+    // Update subtotal
+    subtotalEl.textContent = '$' + subtotal.toFixed(2);
+    
+    // Update delivery fee
+    deliveryFeeEl.textContent = '$' + deliveryFee.toFixed(2);
+    
+    // Update tip
+    if (tipAmount > 0) {
+        tipRow.style.display = 'flex';
+        tipEl.textContent = '$' + tipAmount.toFixed(2);
+    } else {
+        tipRow.style.display = 'none';
+    }
+    
+    // Calculate and update total
+    const total = subtotal + deliveryFee + tipAmount;
+    totalEl.textContent = '$' + total.toFixed(2);
+    
+    // Update place order button
+    const orderTotalSpan = document.getElementById('order-total-btn');
+    if (orderTotalSpan) {
+        orderTotalSpan.textContent = '$' + total.toFixed(2);
+    }
+}
+
+// Payment Method Toggle
+function togglePaymentFields() {
+    const paymentMethod = document.querySelector('input[name="payment_method"]:checked').value;
+    const cardSection = document.getElementById('card-payment-section');
+    const cashSection = document.getElementById('cash-payment-section');
+    
+    if (paymentMethod === 'card') {
+        cardSection.style.display = 'block';
+        cashSection.style.display = 'none';
+        // Make card fields required
+        document.getElementById('card_name').required = true;
+        document.getElementById('card_number').required = true;
+        document.getElementById('card_expiry').required = true;
+        document.getElementById('card_cvv').required = true;
+    } else {
+        cardSection.style.display = 'none';
+        cashSection.style.display = 'block';
+        // Make card fields optional
+        document.getElementById('card_name').required = false;
+        document.getElementById('card_number').required = false;
+        document.getElementById('card_expiry').required = false;
+        document.getElementById('card_cvv').required = false;
+    }
+}
+
+// Card Number Formatting
+function formatCardNumber(input) {
+    let value = input.value.replace(/\s/g, '');
+    let formattedValue = value.match(/.{1,4}/g)?.join(' ') || value;
+    
+    if (formattedValue.length > input.maxLength) {
+        formattedValue = formattedValue.substr(0, input.maxLength);
+    }
+    
+    input.value = formattedValue;
+    
+    // Update card icon based on first digit
+    const firstDigit = value.charAt(0);
+    updateCardIcon(firstDigit);
+}
+
+// Expiry Date Formatting
+function formatExpiry(input) {
+    let value = input.value.replace(/\D/g, '');
+    
+    if (value.length >= 2) {
+        value = value.substring(0, 2) + '/' + value.substring(2, 4);
+    }
+    
+    input.value = value;
+}
+
+// CVV Formatting
+function formatCVV(input) {
+    input.value = input.value.replace(/\D/g, '');
+}
+
+// Update Card Icon
+function updateCardIcon(firstDigit) {
+    const cardIcons = document.querySelectorAll('.card-icon');
+    cardIcons.forEach(icon => icon.classList.remove('active'));
+    
+    if (firstDigit === '4') {
+        document.querySelector('.card-icon.visa')?.classList.add('active');
+    } else if (firstDigit === '5') {
+        document.querySelector('.card-icon.mastercard')?.classList.add('active');
+    } else if (firstDigit === '3') {
+        document.querySelector('.card-icon.amex')?.classList.add('active');
+    }
+}
+
+// Form validation
+document.getElementById('checkoutForm').addEventListener('submit', function(e) {
+    const orderType = document.querySelector('input[name="order_type"]:checked').value;
+    const deliveryAddress = document.getElementById('delivery_address');
+    const paymentMethod = document.querySelector('input[name="payment_method"]:checked').value;
+    
+    // Validate delivery address for delivery orders
+    if (orderType === 'delivery' && !deliveryAddress.value.trim()) {
+        e.preventDefault();
+        alert('Please enter a delivery address or select pickup instead.');
+        deliveryAddress.focus();
+        return false;
+    }
+    
+    // Validate card information for card payments
+    if (paymentMethod === 'card') {
+        const cardName = document.getElementById('card_name').value.trim();
+        const cardNumber = document.getElementById('card_number').value.replace(/\s/g, '');
+        const cardExpiry = document.getElementById('card_expiry').value;
+        const cardCVV = document.getElementById('card_cvv').value;
+        
+        if (!cardName) {
+            e.preventDefault();
+            alert('Please enter the name on card.');
+            document.getElementById('card_name').focus();
+            return false;
+        }
+        
+        if (cardNumber.length < 13 || cardNumber.length > 19) {
+            e.preventDefault();
+            alert('Please enter a valid card number.');
+            document.getElementById('card_number').focus();
+            return false;
+        }
+        
+        if (!/^\d{2}\/\d{2}$/.test(cardExpiry)) {
+            e.preventDefault();
+            alert('Please enter a valid expiry date (MM/YY).');
+            document.getElementById('card_expiry').focus();
+            return false;
+        }
+        
+        // Validate expiry date
+        const [month, year] = cardExpiry.split('/');
+        const expiryDate = new Date(2000 + parseInt(year), parseInt(month) - 1);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        if (expiryDate < today) {
+            e.preventDefault();
+            alert('Card has expired. Please use a valid card.');
+            document.getElementById('card_expiry').focus();
+            return false;
+        }
+        
+        if (cardCVV.length < 3 || cardCVV.length > 4) {
+            e.preventDefault();
+            alert('Please enter a valid CVV.');
+            document.getElementById('card_cvv').focus();
+            return false;
+        }
+    }
+    
+    // Show processing message
+    const submitBtn = document.querySelector('.place-order-btn');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span>Processing Payment...</span>';
+    }
+});
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    toggleDeliveryFields();
+    togglePaymentFields();
+    updateOrderSummary();
+});
+</script>
 
 {% endblock %}

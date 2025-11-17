@@ -88,6 +88,29 @@ document.body.classList.add('staff-portal');
                 </svg>
                 My Profile
             </a>
+            <a href="{{ url_for('staff_orders') }}" class="{% if active_tab == 'orders' %}active{% endif %}">
+                <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <path d="M16 10a4 4 0 0 1-8 0"></path>
+                </svg>
+                Orders
+            </a>
+            <a href="{{ url_for('staff_income') }}" class="{% if active_tab == 'income' %}active{% endif %}">
+                <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="2" x2="12" y2="22"></line>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                </svg>
+                Income
+            </a>
+            <a href="{{ url_for('staff_menu') }}" class="{% if active_tab == 'menu' %}active{% endif %}">
+                <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <path d="M16 10a4 4 0 0 1-8 0"></path>
+                </svg>
+                Menu Management
+            </a>
         </nav>
         <div class="staff-user">
             <div class="staff-user-avatar">{{ user.first[0]|upper }}</div>

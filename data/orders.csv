@@ -1,8 +1,8 @@
-Order_ID,Customer_Name,Customer_Email,Item,Allergy_Info,Is_Safe,Timestamp
-1,Test Customer,test@example.com,Original Chicken Sandwich Combo,I am allergic to gluten,NO,2025-11-13T17:22:02
-2,Effah,ryeboah@gsumail.gram.edu,Original Chicken Sandwich Combo,I am allergic to gluten ,NO,2025-11-13T17:57:05
-3,Effah,ryeboah@gsumail.gram.edu,Original Chicken Sandwich Combo,I am allergic to gluten ,NO,2025-11-13T17:57:19
-4,Rich,kkras5050@gmail.com,Original Chicken Sandwich Combo,no allergic,YES,2025-11-13T23:39:03
-5,AMA,kkras5050@gmail.comm,Family Bucket x1,allergic to onion,YES,2025-11-15T07:49:54
-6,kk,oo33@gmail.com,Original Chicken Sandwich Combo x1,onion,YES,2025-11-15T07:51:14
-7,Fola,bolakaleabubakar74@gmail.com,"Family Bucket x1, Original Chicken Sandwich Combo x1, Veggie Bowl x1",Nuts,YES,2025-11-17T02:20:50
+Order_ID,Customer_Name,Customer_Email,Item,Allergy_Info,Is_Safe,Timestamp,Status,Completed_By,Price
+1,Test Customer,test@example.com,Original Chicken Sandwich Combo,I am allergic to gluten,NO,2025-11-13T17:22:02,Completed,,7.99
+2,Effah,ryeboah@gsumail.gram.edu,Original Chicken Sandwich Combo,I am allergic to gluten ,NO,2025-11-13T17:57:05,Pending,,7.99
+3,Effah,ryeboah@gsumail.gram.edu,Original Chicken Sandwich Combo,I am allergic to gluten ,NO,2025-11-13T17:57:19,Pending,,7.99
+4,Rich,kkras5050@gmail.com,Original Chicken Sandwich Combo,no allergic,YES,2025-11-13T23:39:03,Pending,,7.99
+5,AMA,kkras5050@gmail.comm,Family Bucket x1,allergic to onion,YES,2025-11-15T07:49:54,Pending,,19.99
+6,kk,oo33@gmail.com,Original Chicken Sandwich Combo x1,onion,YES,2025-11-15T07:51:14,Pending,,7.99
+7,Fola,bolakaleabubakar74@gmail.com,"Family Bucket x1, Original Chicken Sandwich Combo x1, Veggie Bowl x1",Nuts,YES,2025-11-17T02:20:50,Pending,,36.47

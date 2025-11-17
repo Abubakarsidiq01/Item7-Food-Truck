@@ -25,15 +25,25 @@ ADMIN_EMAILS = {
 # Backend instance (rename brand)
 my_truck = FoodTruck("Item7 Food Truck", "GSU Campus")
 
+# Configure logging for the Flask app (file handler is set up in foodtruck.py as well).
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
+
 # Initialize CSV files on startup
 my_truck.initialize_csv_files()
 my_truck.load_staff_from_csv()
 my_truck.load_schedules_from_csv()
 my_truck.load_orders_from_csv()
-
-# Configure logging for the Flask app (file handler is set up in foodtruck.py as well).
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(__name__)
+# Migrate existing orders to include new fields
+my_truck.migrate_orders_csv()
+# Load menu items - ensure it's loaded
+my_truck.load_menu_from_csv()
+# Verify menu loaded
+if not my_truck.menu_items:
+    logger.warning("Menu is empty on startup, initializing default menu")
+    my_truck.initialize_default_menu()
+    my_truck.load_menu_from_csv()
+logger.info(f"Menu initialized with {len(my_truck.menu_items)} items")
 
 
 # ---------- HELPERS ----------
@@ -103,7 +113,18 @@ def inject_globals():
 
 @app.route("/")
 def home():
-    featured_items = my_truck.get_menu_items()[:4]
+    # Reload menu to ensure it's up to date
+    my_truck.load_menu_from_csv()
+    all_items = my_truck.get_menu_items()
+    
+    # Show all 15 items on home page (or up to 15)
+    featured_items = all_items[:15] if all_items else []
+    
+    # Debug logging
+    if not featured_items:
+        logger.warning("No featured items found! Menu items count: " + str(len(all_items)))
+        logger.warning(f"Menu items in memory: {len(my_truck.menu_items)}")
+    
     return render_template(
         "home.html",
         featured_items=featured_items,
@@ -115,8 +136,23 @@ def home():
 
 @app.route("/menu")
 def menu_page():
+    # Reload menu to ensure it's up to date
+    my_truck.load_menu_from_csv()
     menu_items = my_truck.get_menu_items()
-    return render_template("menu.html", menu_items=menu_items, title="Menu")
+    
+    # Group items by category for better display
+    items_by_category = {
+        "Food": [item for item in menu_items if item.get("category") == "Food"],
+        "Drinks": [item for item in menu_items if item.get("category") == "Drinks"],
+        "Dessert": [item for item in menu_items if item.get("category") == "Dessert"],
+    }
+    
+    return render_template(
+        "menu.html", 
+        menu_items=menu_items,
+        items_by_category=items_by_category,
+        title="Menu"
+    )
 
 
 # --- Staff Portal Helpers ---
@@ -364,6 +400,296 @@ def staff_profile():
     )
 
 
+@app.route("/staff/orders")
+def staff_orders():
+    access_redirect = require_staff_access()
+    if access_redirect:
+        return access_redirect
+    
+    my_truck.load_orders_from_csv()
+    
+    # Get selected date from query parameter
+    selected_date = request.args.get("date", "")
+    
+    # Group orders by date
+    orders_by_date = {}
+    for order in my_truck.orders:
+        try:
+            order_datetime = datetime.fromisoformat(order["timestamp"])
+            order_date = order_datetime.strftime("%Y-%m-%d")
+            date_display = order_datetime.strftime("%B %d, %Y")
+            
+            if order_date not in orders_by_date:
+                orders_by_date[order_date] = {
+                    "display": date_display,
+                    "orders": []
+                }
+            orders_by_date[order_date]["orders"].append(order)
+        except (ValueError, KeyError):
+            # Handle old orders without proper timestamp
+            continue
+    
+    # Sort dates descending
+    sorted_dates = sorted(orders_by_date.keys(), reverse=True)
+    
+    # Get orders for selected date or all orders
+    if selected_date and selected_date in orders_by_date:
+        filtered_orders = orders_by_date[selected_date]["orders"]
+    else:
+        filtered_orders = my_truck.orders
+    
+    # Sort orders by timestamp (newest first)
+    filtered_orders.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+    
+    return render_staff_template(
+        "staff_orders.html",
+        active_tab="orders",
+        orders=filtered_orders,
+        orders_by_date=orders_by_date,
+        sorted_dates=sorted_dates,
+        selected_date=selected_date,
+        title="Staff Portal - Orders",
+    )
+
+
+@app.route("/staff/orders/complete", methods=["POST"])
+def complete_order():
+    access_redirect = require_staff_access()
+    if access_redirect:
+        return access_redirect
+    
+    order_id = request.form.get("order_id")
+    user = my_truck.get_user_details(session.get("user_email"))
+    
+    if order_id and user:
+        staff_name = f"{user.get('First_Name', '')} {user.get('Last_Name', '')}".strip()
+        success = my_truck.update_order_status(order_id, "Completed", staff_name)
+        if success:
+            flash("Order marked as completed!", "success")
+        else:
+            flash("Failed to update order status.", "error")
+    
+    return redirect(url_for("staff_orders"))
+
+
+@app.route("/staff/income")
+def staff_income():
+    access_redirect = require_staff_access()
+    if access_redirect:
+        return access_redirect
+    
+    my_truck.load_orders_from_csv()
+    
+    # Get filters
+    period = request.args.get("period", "day")
+    start_date = request.args.get("start_date", "")
+    end_date = request.args.get("end_date", "")
+    
+    # Calculate income by period
+    income_data = {}
+    total_income = 0.0
+    
+    for order in my_truck.orders:
+        try:
+            order_datetime = datetime.fromisoformat(order["timestamp"])
+            order_date = order_datetime.date()
+            
+            # Apply date range filter
+            if start_date:
+                try:
+                    start = datetime.strptime(start_date, "%Y-%m-%d").date()
+                    if order_date < start:
+                        continue
+                except ValueError:
+                    pass
+            
+            if end_date:
+                try:
+                    end = datetime.strptime(end_date, "%Y-%m-%d").date()
+                    if order_date > end:
+                        continue
+                except ValueError:
+                    pass
+            
+            price = float(order.get("price", 0) or 0)
+            
+            if period == "day":
+                key = order_datetime.strftime("%Y-%m-%d")
+                display = order_datetime.strftime("%B %d, %Y")
+            elif period == "week":
+                week_start = order_datetime - timedelta(days=order_datetime.weekday())
+                key = week_start.strftime("%Y-W%W")
+                display = f"Week of {week_start.strftime('%B %d, %Y')}"
+            elif period == "month":
+                key = order_datetime.strftime("%Y-%m")
+                display = order_datetime.strftime("%B %Y")
+            elif period == "year":
+                key = order_datetime.strftime("%Y")
+                display = order_datetime.strftime("%Y")
+            else:
+                key = order_datetime.strftime("%Y-%m-%d")
+                display = order_datetime.strftime("%B %d, %Y")
+            
+            if key not in income_data:
+                income_data[key] = {"display": display, "amount": 0.0, "count": 0}
+            
+            income_data[key]["amount"] += price
+            income_data[key]["count"] += 1
+            total_income += price
+            
+        except (ValueError, KeyError):
+            continue
+    
+    # Sort by key (date/week/month/year)
+    sorted_income = sorted(income_data.items(), key=lambda x: x[0], reverse=True)
+    
+    return render_staff_template(
+        "staff_income.html",
+        active_tab="income",
+        income_data=sorted_income,
+        total_income=total_income,
+        period=period,
+        start_date=start_date,
+        end_date=end_date,
+        title="Staff Portal - Income Analytics",
+    )
+
+
+@app.route("/staff/menu")
+def staff_menu():
+    access_redirect = require_staff_access()
+    if access_redirect:
+        return access_redirect
+    
+    my_truck.load_menu_from_csv()
+    all_items = my_truck.menu_items
+    
+    return render_staff_template(
+        "staff_menu.html",
+        active_tab="menu",
+        menu_items=all_items,
+        title="Staff Portal - Menu Management",
+    )
+
+
+@app.route("/staff/menu/add", methods=["GET", "POST"])
+def staff_menu_add():
+    access_redirect = require_staff_access()
+    if access_redirect:
+        return access_redirect
+    
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        description = request.form.get("description", "").strip()
+        price = float(request.form.get("price", 0) or 0)
+        category = request.form.get("category", "Non-Veg")
+        vegan = request.form.get("vegan") == "true"
+        allergens_str = request.form.get("allergens", "").strip()
+        available = request.form.get("available") == "true"
+        
+        # Handle image upload
+        image = request.form.get("image", "burger.svg")
+        if "image_file" in request.files:
+            file = request.files["image_file"]
+            if file and file.filename:
+                filename = file.filename
+                import os
+                from werkzeug.utils import secure_filename
+                upload_folder = os.path.join(app.root_path, "static", "images")
+                os.makedirs(upload_folder, exist_ok=True)
+                filename = secure_filename(filename)
+                filepath = os.path.join(upload_folder, filename)
+                file.save(filepath)
+                image = filename
+        
+        allergens = [a.strip() for a in allergens_str.split(",") if a.strip()]
+        
+        success = my_truck.save_menu_item("", name, description, price, category, vegan, image, allergens, available)
+        if success:
+            flash("Menu item added successfully!", "success")
+        else:
+            flash("Failed to add menu item.", "error")
+        
+        return redirect(url_for("staff_menu"))
+    
+    return render_staff_template(
+        "staff_menu_form.html",
+        active_tab="menu",
+        item=None,
+        title="Staff Portal - Add Menu Item",
+    )
+
+
+@app.route("/staff/menu/edit/<item_id>", methods=["GET", "POST"])
+def staff_menu_edit(item_id):
+    access_redirect = require_staff_access()
+    if access_redirect:
+        return access_redirect
+    
+    my_truck.load_menu_from_csv()
+    item = next((i for i in my_truck.menu_items if str(i.get("item_id")) == str(item_id)), None)
+    
+    if not item:
+        flash("Menu item not found.", "error")
+        return redirect(url_for("staff_menu"))
+    
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        description = request.form.get("description", "").strip()
+        price = float(request.form.get("price", 0) or 0)
+        category = request.form.get("category", "Non-Veg")
+        vegan = request.form.get("vegan") == "true"
+        allergens_str = request.form.get("allergens", "").strip()
+        available = request.form.get("available") == "true"
+        
+        # Handle image upload
+        image = item.get("image", "burger.svg")
+        if "image_file" in request.files:
+            file = request.files["image_file"]
+            if file and file.filename:
+                filename = file.filename
+                import os
+                from werkzeug.utils import secure_filename
+                upload_folder = os.path.join(app.root_path, "static", "images")
+                os.makedirs(upload_folder, exist_ok=True)
+                filename = secure_filename(filename)
+                filepath = os.path.join(upload_folder, filename)
+                file.save(filepath)
+                image = filename
+        
+        allergens = [a.strip() for a in allergens_str.split(",") if a.strip()]
+        
+        success = my_truck.save_menu_item(item_id, name, description, price, category, vegan, image, allergens, available)
+        if success:
+            flash("Menu item updated successfully!", "success")
+        else:
+            flash("Failed to update menu item.", "error")
+        
+        return redirect(url_for("staff_menu"))
+    
+    return render_staff_template(
+        "staff_menu_form.html",
+        active_tab="menu",
+        item=item,
+        title="Staff Portal - Edit Menu Item",
+    )
+
+
+@app.route("/staff/menu/delete/<item_id>", methods=["POST"])
+def staff_menu_delete(item_id):
+    access_redirect = require_staff_access()
+    if access_redirect:
+        return access_redirect
+    
+    success = my_truck.delete_menu_item(item_id)
+    if success:
+        flash("Menu item deleted successfully!", "success")
+    else:
+        flash("Failed to delete menu item.", "error")
+    
+    return redirect(url_for("staff_menu"))
+
+
 @app.route("/add_to_cart", methods=["POST"])
 def add_to_cart():
     item_name = request.form["item_name"]
@@ -403,14 +729,81 @@ def checkout():
     items_summary = ", ".join(
         f"{name} x{item['qty']}" for name, item in cart.items()
     )
+    
+    # Get user profile if logged in
+    user_email = session.get("user_email")
+    user = my_truck.get_user_details(user_email) if user_email else None
+    
+    # Get menu items for allergy checking
+    my_truck.load_menu_from_csv()
+    menu_items = my_truck.get_menu_items()
+    menu_allergens = my_truck.get_menu_allergens()
+    
+    # Check for allergens in cart items
+    cart_allergens = set()
+    for item_name in cart.keys():
+        if item_name in menu_allergens:
+            cart_allergens.update(menu_allergens[item_name])
 
     if request.method == "POST":
-        customer_name = request.form["customer_name"]
-        customer_email = request.form["customer_email"]
-        allergy_info = request.form["allergy_info"]
+        customer_name = request.form.get("customer_name", "")
+        customer_email = request.form.get("customer_email", "")
+        customer_phone = request.form.get("customer_phone", "")
+        order_type = request.form.get("order_type", "delivery")
+        delivery_address = request.form.get("delivery_address", "")
+        address_lat = request.form.get("address_lat", "")
+        address_lng = request.form.get("address_lng", "")
+        delivery_instructions = request.form.get("delivery_instructions", "")
+        pickup_instructions = request.form.get("pickup_instructions", "")
+        tip_amount = float(request.form.get("tip_amount", "0.00") or "0.00")
+        allergy_info = request.form.get("allergy_info", "")
+        
+        # Payment information
+        payment_method = request.form.get("payment_method", "card")
+        card_name = request.form.get("card_name", "")
+        card_number = request.form.get("card_number", "")
+        card_expiry = request.form.get("card_expiry", "")
+        card_cvv = request.form.get("card_cvv", "")
+        billing_address = request.form.get("billing_address", "")
+        
+        # Mask card number for security (only store last 4 digits)
+        masked_card = ""
+        if card_number:
+            card_digits = card_number.replace(" ", "")
+            if len(card_digits) >= 4:
+                masked_card = "**** **** **** " + card_digits[-4:]
+
+        # Use user profile data if logged in and fields are empty
+        if user and not customer_name:
+            customer_name = f"{user.get('first', '')} {user.get('last', '')}".strip()
+        if user and not customer_email:
+            customer_email = user.get("email", "")
+        if user and not customer_phone:
+            customer_phone = user.get("phone", "")
+        if user and not delivery_address and order_type == "delivery":
+            delivery_address = user.get("address", "")
+
+        # Calculate final total
+        delivery_fee = 2.99 if order_type == "delivery" else 0.00
+        final_total = total + delivery_fee + tip_amount
 
         my_truck.add_order_to_csv(
-            customer_name, customer_email, items_summary, allergy_info
+            customer_name, 
+            customer_email, 
+            items_summary, 
+            allergy_info,
+            customer_phone=customer_phone,
+            order_type=order_type,
+            delivery_address=delivery_address,
+            address_lat=address_lat,
+            address_lng=address_lng,
+            delivery_instructions=delivery_instructions,
+            pickup_instructions=pickup_instructions,
+            tip_amount=tip_amount,
+            delivery_fee=delivery_fee,
+            payment_method=payment_method,
+            masked_card=masked_card,
+            card_expiry=card_expiry
         )
         my_truck.load_orders_from_csv()
 
@@ -419,7 +812,7 @@ def checkout():
         return render_template(
             "checkout_success.html",
             customer_name=customer_name,
-            total=total,
+            total=final_total,
             title="Order Confirmed",
         )
 
@@ -428,6 +821,8 @@ def checkout():
         cart=cart,
         total=total,
         items_summary=items_summary,
+        user=user,
+        cart_allergens=list(cart_allergens),
         title="Checkout",
     )
 
