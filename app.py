@@ -117,8 +117,8 @@ def home():
     my_truck.load_menu_from_csv()
     all_items = my_truck.get_menu_items()
     
-    # Show all 15 items on home page (or up to 15)
-    featured_items = all_items[:15] if all_items else []
+    # Show up to 25 items on home page
+    featured_items = all_items[:30] if all_items else []
     
     # Debug logging
     if not featured_items:
@@ -582,10 +582,11 @@ def staff_menu_add():
         name = request.form.get("name", "").strip()
         description = request.form.get("description", "").strip()
         price = float(request.form.get("price", 0) or 0)
-        category = request.form.get("category", "Non-Veg")
+        category = request.form.get("category", "Food")
         vegan = request.form.get("vegan") == "true"
         allergens_str = request.form.get("allergens", "").strip()
-        available = request.form.get("available") == "true"
+        # Checkbox: if present and "true", it's available. If not present, default to True for new items
+        available = request.form.get("available") == "true" if "available" in request.form else True
         
         # Handle image upload
         image = request.form.get("image", "burger.svg")
@@ -606,6 +607,9 @@ def staff_menu_add():
         
         success = my_truck.save_menu_item("", name, description, price, category, vegan, image, allergens, available)
         if success:
+            # Force reload menu to ensure new item appears immediately
+            my_truck.load_menu_from_csv()
+            logger.info(f"Menu item '{name}' added successfully. Total items: {len(my_truck.menu_items)}")
             flash("Menu item added successfully!", "success")
         else:
             flash("Failed to add menu item.", "error")
@@ -637,10 +641,11 @@ def staff_menu_edit(item_id):
         name = request.form.get("name", "").strip()
         description = request.form.get("description", "").strip()
         price = float(request.form.get("price", 0) or 0)
-        category = request.form.get("category", "Non-Veg")
+        category = request.form.get("category", "Food")
         vegan = request.form.get("vegan") == "true"
         allergens_str = request.form.get("allergens", "").strip()
-        available = request.form.get("available") == "true"
+        # Checkbox: if present and "true", it's available. If not present, keep current value
+        available = request.form.get("available") == "true" if "available" in request.form else item.get("available", True)
         
         # Handle image upload
         image = item.get("image", "burger.svg")
@@ -661,6 +666,9 @@ def staff_menu_edit(item_id):
         
         success = my_truck.save_menu_item(item_id, name, description, price, category, vegan, image, allergens, available)
         if success:
+            # Force reload menu to ensure changes appear immediately
+            my_truck.load_menu_from_csv()
+            logger.info(f"Menu item '{name}' updated successfully. Total items: {len(my_truck.menu_items)}")
             flash("Menu item updated successfully!", "success")
         else:
             flash("Failed to update menu item.", "error")

@@ -92,6 +92,10 @@ class FoodTruck:
                     except (ValueError, TypeError):
                         price = 0.0
                     
+                    # Parse Available field - handle both "True"/"False" strings and boolean values
+                    available_str = str(row.get("Available", "True")).strip()
+                    available = available_str.lower() in ("true", "1", "yes", "on")
+                    
                     self.menu_items.append({
                         "item_id": row.get("Item_ID", ""),
                         "name": row.get("Name", "").strip(),
@@ -101,7 +105,7 @@ class FoodTruck:
                         "vegan": row.get("Vegan", "False").lower() == "true",
                         "image": row.get("Image", "burger.svg").strip(),
                         "allergens": allergens,
-                        "available": row.get("Available", "True").lower() == "true",
+                        "available": available,
                     })
                 logger.info(f"Loaded {len(self.menu_items)} menu items from CSV")
         except FileNotFoundError:
@@ -166,14 +170,28 @@ class FoodTruck:
         # Always reload to ensure fresh data
         self.load_menu_from_csv()
         # Return all items, filtering by availability
-        available_items = [item for item in self.menu_items if item.get("available", True)]
+        # Handle both boolean True and string "True" values
+        available_items = []
+        for item in self.menu_items:
+            available = item.get("available", True)
+            # Handle both boolean and string representations
+            if isinstance(available, bool):
+                if available:
+                    available_items.append(item)
+            elif isinstance(available, str):
+                if available.lower() in ("true", "1", "yes", "on"):
+                    available_items.append(item)
+            else:
+                # Default to True if value is unclear
+                available_items.append(item)
+        
         # If no items available, try to initialize default menu
         if not available_items:
             logger.warning("No menu items found, initializing default menu")
             self.initialize_default_menu()
             self.load_menu_from_csv()
             available_items = [item for item in self.menu_items if item.get("available", True)]
-        logger.info(f"Returning {len(available_items)} menu items")
+        logger.info(f"Returning {len(available_items)} available menu items out of {len(self.menu_items)} total")
         return available_items
 
     def get_menu_allergens(self):
