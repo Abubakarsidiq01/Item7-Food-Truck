@@ -1,0 +1,146 @@
+{% extends "staff_layout.html" %}
+{% block staff_content %}
+
+<section class="panel-card">
+    <div class="panel-header">
+        <div>
+            <h2>🎉 Manage Deals & Promotions</h2>
+            <p class="portal-note">Create special offers that will appear on the homepage and link to Instagram.</p>
+        </div>
+    </div>
+    
+    <div class="panel-body">
+        <!-- Create New Deal Form -->
+        <div class="form-card" style="margin-bottom: 30px;">
+            <h3 style="margin-top: 0;">Create New Deal</h3>
+            <form method="POST" action="{{ url_for('create_deal') }}">
+                <label for="title">Deal Title *</label>
+                <input type="text" id="title" name="title" placeholder="e.g., 50% Off All Orders" required>
+                
+                <label for="description">Description *</label>
+                <textarea id="description" name="description" rows="3" placeholder="Describe the deal in detail..." required></textarea>
+                
+                <label for="discount">Discount/Promo Text *</label>
+                <input type="text" id="discount" name="discount" placeholder="e.g., 50% OFF or $5 OFF" required>
+                
+                <label for="expires_at">Expires At (Optional)</label>
+                <input type="datetime-local" id="expires_at" name="expires_at" placeholder="Leave empty for no expiration">
+                <small style="color: #666; font-size: 12px;">Format: YYYY-MM-DD HH:MM</small>
+                
+                <div class="form-actions">
+                    <button type="submit" class="button">Create Deal</button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Active Deals List -->
+        <div>
+            <h3>Active Deals ({{ active_deals|length }})</h3>
+            {% if active_deals %}
+            <div class="deals-list">
+                {% for deal in active_deals %}
+                <div class="deal-item">
+                    <div class="deal-item-content">
+                        <h4>{{ deal.title }}</h4>
+                        <p>{{ deal.description }}</p>
+                        <div class="deal-meta">
+                            <span class="deal-discount-badge">{{ deal.discount }}</span>
+                            <span class="deal-date">Created: {{ deal.created_at }}</span>
+                            {% if deal.expires_at %}
+                            <span class="deal-date">Expires: {{ deal.expires_at }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p style="color: #666; padding: 20px; text-align: center;">No active deals. Create one above!</p>
+            {% endif %}
+        </div>
+        
+        <!-- All Deals (including inactive) -->
+        {% if all_deals|length > active_deals|length %}
+        <div style="margin-top: 40px;">
+            <h3>All Deals ({{ all_deals|length }})</h3>
+            <div class="deals-list">
+                {% for deal in all_deals %}
+                <div class="deal-item {% if not deal.is_active %}deal-inactive{% endif %}">
+                    <div class="deal-item-content">
+                        <h4>{{ deal.title }} {% if not deal.is_active %}<span style="color: #999; font-size: 12px;">(Inactive)</span>{% endif %}</h4>
+                        <p>{{ deal.description }}</p>
+                        <div class="deal-meta">
+                            <span class="deal-discount-badge">{{ deal.discount }}</span>
+                            <span class="deal-date">Created: {{ deal.created_at }} by {{ deal.created_by }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<style>
+.deals-list {
+    display: grid;
+    gap: 16px;
+    margin-top: 20px;
+}
+
+.deal-item {
+    background: #fff;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.2s ease;
+}
+
+.deal-item:hover {
+    border-color: #d6001c;
+    box-shadow: 0 4px 12px rgba(214, 0, 28, 0.1);
+}
+
+.deal-inactive {
+    opacity: 0.6;
+    background: #f9f9f9;
+}
+
+.deal-item-content h4 {
+    margin: 0 0 8px;
+    color: #1a1a1a;
+    font-size: 18px;
+}
+
+.deal-item-content p {
+    margin: 8px 0;
+    color: #555;
+    line-height: 1.6;
+}
+
+.deal-meta {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+
+.deal-discount-badge {
+    background: linear-gradient(135deg, #d6001c, #b8001f);
+    color: #fff;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.deal-date {
+    font-size: 12px;
+    color: #888;
+}
+</style>
+
+{% endblock %}
+

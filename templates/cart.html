@@ -18,13 +18,25 @@
                 <th>Qty</th>
                 <th>Price</th>
                 <th>Subtotal</th>
+                <th>Actions</th>
             </tr>
             {% for name, item in cart.items() %}
             <tr>
                 <td>{{ name }}</td>
-                <td>{{ item['qty'] }}</td>
+                <td>
+                    <form action="{{ url_for('update_cart') }}" method="POST" style="display:inline;">
+                        <input type="hidden" name="item_name" value="{{ name }}">
+                        <input type="number" name="qty" value="{{ item['qty'] }}" min="1" max="99" style="width:60px; padding:5px;" onchange="this.form.submit()">
+                    </form>
+                </td>
                 <td>${{ "%.2f"|format(item['price']) }}</td>
                 <td>${{ "%.2f"|format(item['price'] * item['qty']) }}</td>
+                <td>
+                    <form action="{{ url_for('remove_from_cart') }}" method="POST" style="display:inline;">
+                        <input type="hidden" name="item_name" value="{{ name }}">
+                        <button type="submit" class="button" style="padding:5px 10px; font-size:12px; background-color:#dc3545;" onclick="return confirm('Remove {{ name }} from cart?')">Remove</button>
+                    </form>
+                </td>
             </tr>
             {% endfor %}
         </table>
@@ -32,7 +44,20 @@
 
     <div class="cart-summary">
         <h2>Order Summary</h2>
-        <p><strong>Total:</strong> ${{ "%.2f"|format(total) }}</p>
+        <div style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                <span>Subtotal:</span>
+                <span>${{ "%.2f"|format(subtotal) }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; color: #666;">
+                <span>Tax ({{ "%.1f"|format(tax_rate * 100) }}%):</span>
+                <span>${{ "%.2f"|format(tax_amount) }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 2px solid #d6001c; margin-top: 8px; font-size: 18px; font-weight: 600; color: #d6001c;">
+                <strong>Total:</strong>
+                <strong>${{ "%.2f"|format(total) }}</strong>
+            </div>
+        </div>
         <p style="font-size:13px; color:#666;">
             You can review allergen information on the checkout page before we prepare your food.
         </p>

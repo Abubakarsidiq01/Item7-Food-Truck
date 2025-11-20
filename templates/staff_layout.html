@@ -81,13 +81,6 @@ document.body.classList.add('staff-portal');
                 </svg>
                 Schedule
             </a>
-            <a href="{{ url_for('staff_profile') }}" class="{% if active_tab == 'profile' %}active{% endif %}">
-                <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="12" cy="7" r="4"></circle>
-                </svg>
-                My Profile
-            </a>
             <a href="{{ url_for('staff_orders') }}" class="{% if active_tab == 'orders' %}active{% endif %}">
                 <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
@@ -96,20 +89,49 @@ document.body.classList.add('staff-portal');
                 </svg>
                 Orders
             </a>
-            <a href="{{ url_for('staff_income') }}" class="{% if active_tab == 'income' %}active{% endif %}">
+            <a href="{{ url_for('staff_statistics') }}" class="{% if active_tab == 'statistics' %}active{% endif %}">
                 <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="12" y1="2" x2="12" y2="22"></line>
-                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                    <line x1="6" y1="20" x2="6" y2="14"></line>
                 </svg>
-                Income
+                Statistics
             </a>
-            <a href="{{ url_for('staff_menu') }}" class="{% if active_tab == 'menu' %}active{% endif %}">
+            <a href="{{ url_for('manage_menu') }}" class="{% if active_tab == 'menu' %}active{% endif %}">
                 <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
                     <line x1="3" y1="6" x2="21" y2="6"></line>
-                    <path d="M16 10a4 4 0 0 1-8 0"></path>
+                    <path d="M8 12h8"></path>
                 </svg>
-                Menu Management
+                Manage Menu
+            </a>
+            {% if is_senior_manager %}
+            <a href="{{ url_for('manage_deals') }}" class="{% if active_tab == 'deals' %}active{% endif %}">
+                <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                    <path d="M2 17l10 5 10-5"></path>
+                    <path d="M2 12l10 5 10-5"></path>
+                </svg>
+                Manage Deals
+            </a>
+            {% endif %}
+            {% if is_admin %}
+            <div class="navigation-heading" style="margin-top: 20px;">ADMIN</div>
+            <a href="{{ url_for('admin_dashboard') }}" class="{% if active_tab == 'admin' %}active{% endif %}">
+                <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                    <path d="M2 17l10 5 10-5"></path>
+                    <path d="M2 12l10 5 10-5"></path>
+                </svg>
+                Super Admin
+            </a>
+            {% endif %}
+            <a href="{{ url_for('staff_profile') }}" class="{% if active_tab == 'profile' %}active{% endif %}">
+                <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                My Profile
             </a>
         </nav>
         <div class="staff-user">

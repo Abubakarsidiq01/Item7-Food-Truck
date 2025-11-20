@@ -51,14 +51,48 @@
             <div class="auth-role-group">
                 <p class="auth-role-label">Is this an Item7 staff account?</p>
                 <label class="auth-role-option">
-                    <input type="radio" name="account_type" value="staff" checked>
+                    <input type="radio" name="account_type" value="staff" id="account_staff" onchange="toggleStaffCode()">
                     Yes, register me as staff
                 </label>
                 <label class="auth-role-option">
-                    <input type="radio" name="account_type" value="customer">
+                    <input type="radio" name="account_type" value="customer" id="account_customer" onchange="toggleStaffCode()" checked>
                     No, I'm a customer/guest
                 </label>
             </div>
+
+            <div id="staff-code-field" style="display: none;">
+                <label for="staff_code">Staff Registration Code <span style="color: #dc3545;">*</span></label>
+                <input id="staff_code" type="text" name="staff_code" placeholder="Enter staff registration code" 
+                       style="border: 2px solid #d6001c;">
+                <p style="font-size: 12px; color: #666; margin-top: 5px;">
+                    You must have a valid staff registration code to register as staff.
+                </p>
+            </div>
+
+            <script>
+                function toggleStaffCode() {
+                    const staffRadio = document.getElementById('account_staff');
+                    const staffCodeField = document.getElementById('staff-code-field');
+                    if (staffRadio && staffCodeField) {
+                        if (staffRadio.checked) {
+                            staffCodeField.style.display = 'block';
+                            document.getElementById('staff_code').required = true;
+                        } else {
+                            staffCodeField.style.display = 'none';
+                            document.getElementById('staff_code').required = false;
+                        }
+                    }
+                }
+                // Check on page load if staff is selected
+                window.addEventListener('DOMContentLoaded', function() {
+                    toggleStaffCode();
+                    // Add event listeners
+                    const staffRadio = document.getElementById('account_staff');
+                    const customerRadio = document.getElementById('account_customer');
+                    if (staffRadio) staffRadio.addEventListener('change', toggleStaffCode);
+                    if (customerRadio) customerRadio.addEventListener('change', toggleStaffCode);
+                });
+            </script>
 
             <div class="form-actions">
                 <button type="submit" class="button">Create account</button>

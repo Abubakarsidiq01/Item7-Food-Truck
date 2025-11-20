@@ -2,145 +2,324 @@
 {% block content %}
 
 <div class="page-header">
-    <h1>Menu</h1>
+    <h1>🍽️ Menu</h1>
     <a href="{{ url_for('cart_page') }}" class="button">
         View Cart{% if cart_count %} ({{ cart_count }}){% endif %}
     </a>
 </div>
-<p class="section-subtitle">Browse all items from the food truck and add them to your cart.</p>
+<p class="section-subtitle">Browse all items from the food truck and add them to your cart. Swipe or use arrows to navigate!</p>
 
-{% if items_by_category %}
-    <!-- Food Section -->
-    {% if items_by_category.Food %}
-    <section class="menu-section">
-        <div class="section-header">
-            <h2>🍽️ Food</h2>
-        </div>
-        <div class="menu-grid">
-            {% for item in items_by_category.Food %}
-            <div class="menu-card">
-                <img src="{{ url_for('static', filename='images/' ~ item.image) }}" alt="{{ item.name }}" onerror="this.src='{{ url_for('static', filename='images/' ~ ('drink.svg' if item.category == 'Drinks' else 'dessert.svg' if item.category == 'Dessert' else 'burger.svg')) }}'">
-                <h3>{{ item.name }}</h3>
-                <p class="menu-meta">
-                    {% if item.vegan %}Vegan{% else %}Non-Veg{% endif %}
-                </p>
-                <p>{{ item.description }}</p>
-                <div class="menu-tags">
-                    {% if item.vegan %}
-                    <span class="menu-tag">Vegan Friendly</span>
-                    {% else %}
-                    <span class="menu-tag">Signature</span>
-                    {% endif %}
+<section class="menu-section">
+    {% if categories %}
+        {% for category, items in categories.items() %}
+            <div class="menu-category-section" style="margin-bottom: 50px;">
+                <div class="category-header">
+                    <h2 class="menu-category-title">{{ category }}</h2>
+                    <div class="carousel-indicators" id="indicators-{{ loop.index0 }}">
+                        <span class="carousel-dot active" data-slide="0"></span>
+                    </div>
                 </div>
-                <p class="price">${{ "%.2f"|format(item.price) }}</p>
-                <form action="{{ url_for('add_to_cart') }}" method="POST">
-                    <input type="hidden" name="item_name" value="{{ item.name }}">
-                    <input type="hidden" name="price" value="{{ item.price }}">
-                    <input type="hidden" name="redirect_to" value="{{ url_for('menu_page') }}">
-                    <button type="submit" class="button">Add to Cart</button>
-                </form>
+                
+                <div class="menu-carousel-wrapper">
+                    <button class="carousel-btn carousel-btn-prev" onclick="scrollCarousel('{{ loop.index0 }}', -1)" aria-label="Previous">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                    </button>
+                    
+                    <div class="menu-carousel" id="carousel-{{ loop.index0 }}" data-category="{{ category }}">
+                        <div class="menu-carousel-track">
+                            {% for item in items %}
+                            <div class="menu-card">
+                                <img src="{{ url_for('static', filename='images/' ~ item.image) }}" alt="{{ item.name }}">
+                                <h3>{{ item.name }}</h3>
+                                <p class="menu-meta">
+                                    {% if item.vegan %}🌱 Vegan{% endif %}
+                                </p>
+                                <p>{{ item.description }}</p>
+                                <div class="menu-tags">
+                                    {% if item.category == "Combo" %}
+                                        <span class="menu-tag">Combo Deal</span>
+                                    {% endif %}
+                                    {% if item.vegan %}
+                                        <span class="menu-tag">Vegan Friendly</span>
+                                    {% endif %}
+                                </div>
+                                <p class="price">${{ "%.2f"|format(item.price) }}</p>
+                                <form action="{{ url_for('add_to_cart') }}" method="POST">
+                                    <input type="hidden" name="item_name" value="{{ item.name }}">
+                                    <input type="hidden" name="price" value="{{ item.price }}">
+                                    <input type="hidden" name="redirect_to" value="{{ url_for('menu_page') }}">
+                                    <button type="submit" class="button">Add to Cart</button>
+                                </form>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <button class="carousel-btn carousel-btn-next" onclick="scrollCarousel('{{ loop.index0 }}', 1)" aria-label="Next">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </button>
+                </div>
             </div>
-            {% endfor %}
+        {% endfor %}
+    {% else %}
+        <div class="menu-carousel-wrapper">
+            <button class="carousel-btn carousel-btn-prev" onclick="scrollCarousel('0', -1)" aria-label="Previous">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
+            
+            <div class="menu-carousel" id="carousel-0">
+                <div class="menu-carousel-track">
+                    {% for item in menu_items %}
+                    <div class="menu-card">
+                        <img src="{{ url_for('static', filename='images/' ~ item.image) }}" alt="{{ item.name }}">
+                        <h3>{{ item.name }}</h3>
+                        <p class="menu-meta">
+                            {{ item.category }}{% if item.vegan %} · 🌱 Vegan{% endif %}
+                        </p>
+                        <p>{{ item.description }}</p>
+                        <div class="menu-tags">
+                            {% if item.category == "Non-Veg" %}
+                                <span class="menu-tag">Signature</span>
+                            {% endif %}
+                            {% if item.vegan %}
+                                <span class="menu-tag">Vegan Friendly</span>
+                            {% endif %}
+                        </div>
+                        <p class="price">${{ "%.2f"|format(item.price) }}</p>
+                        <form action="{{ url_for('add_to_cart') }}" method="POST">
+                            <input type="hidden" name="item_name" value="{{ item.name }}">
+                            <input type="hidden" name="price" value="{{ item.price }}">
+                            <input type="hidden" name="redirect_to" value="{{ url_for('menu_page') }}">
+                            <button type="submit" class="button">Add to Cart</button>
+                        </form>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <button class="carousel-btn carousel-btn-next" onclick="scrollCarousel('0', 1)" aria-label="Next">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+            </button>
         </div>
-    </section>
     {% endif %}
+</section>
 
-    <!-- Drinks Section -->
-    {% if items_by_category.Drinks %}
-    <section class="menu-section">
-        <div class="section-header">
-            <h2>🥤 Drinks & Beverages</h2>
-        </div>
-        <div class="menu-grid">
-            {% for item in items_by_category.Drinks %}
-            <div class="menu-card">
-                <img src="{{ url_for('static', filename='images/' ~ item.image) }}" alt="{{ item.name }}" onerror="this.src='{{ url_for('static', filename='images/' ~ ('drink.svg' if item.category == 'Drinks' else 'dessert.svg' if item.category == 'Dessert' else 'burger.svg')) }}'">
-                <h3>{{ item.name }}</h3>
-                <p class="menu-meta">
-                    {{ item.category }}{% if item.vegan %} · Vegan{% endif %}
-                </p>
-                <p>{{ item.description }}</p>
-                <div class="menu-tags">
-                    {% if item.vegan %}
-                    <span class="menu-tag">Vegan</span>
-                    {% endif %}
-                </div>
-                <p class="price">${{ "%.2f"|format(item.price) }}</p>
-                <form action="{{ url_for('add_to_cart') }}" method="POST">
-                    <input type="hidden" name="item_name" value="{{ item.name }}">
-                    <input type="hidden" name="price" value="{{ item.price }}">
-                    <input type="hidden" name="redirect_to" value="{{ url_for('menu_page') }}">
-                    <button type="submit" class="button">Add to Cart</button>
-                </form>
-            </div>
-            {% endfor %}
-        </div>
-    </section>
-    {% endif %}
+<script>
+// Carousel functionality with swipe support
+let carouselPositions = {};
 
-    <!-- Desserts Section -->
-    {% if items_by_category.Dessert %}
-    <section class="menu-section">
-        <div class="section-header">
-            <h2>🍰 Desserts</h2>
-        </div>
-        <div class="menu-grid">
-            {% for item in items_by_category.Dessert %}
-            <div class="menu-card">
-                <img src="{{ url_for('static', filename='images/' ~ item.image) }}" alt="{{ item.name }}" onerror="this.src='{{ url_for('static', filename='images/veggie.svg') }}'">
-                <h3>{{ item.name }}</h3>
-                <p class="menu-meta">
-                    {{ item.category }}{% if item.vegan %} · Vegan{% endif %}
-                </p>
-                <p>{{ item.description }}</p>
-                <div class="menu-tags">
-                    <span class="menu-tag">Sweet</span>
-                </div>
-                <p class="price">${{ "%.2f"|format(item.price) }}</p>
-                <form action="{{ url_for('add_to_cart') }}" method="POST">
-                    <input type="hidden" name="item_name" value="{{ item.name }}">
-                    <input type="hidden" name="price" value="{{ item.price }}">
-                    <input type="hidden" name="redirect_to" value="{{ url_for('menu_page') }}">
-                    <button type="submit" class="button">Add to Cart</button>
-                </form>
-            </div>
-            {% endfor %}
-        </div>
-    </section>
-    {% endif %}
-{% else %}
-    <!-- Fallback: Show all items if no category grouping -->
-    <section class="menu-section">
-        <div class="menu-grid">
-            {% for item in menu_items %}
-            <div class="menu-card">
-                <img src="{{ url_for('static', filename='images/' ~ item.image) }}" alt="{{ item.name }}" onerror="this.src='{{ url_for('static', filename='images/' ~ ('drink.svg' if item.category == 'Drinks' else 'dessert.svg' if item.category == 'Dessert' else 'burger.svg')) }}'">
-                <h3>{{ item.name }}</h3>
-                <p class="menu-meta">
-                    {{ item.category }}{% if item.vegan %} · Vegan{% endif %}
-                </p>
-                <p>{{ item.description }}</p>
-                <div class="menu-tags">
-                    {% if item.category == "Food" %}
-                        <span class="menu-tag">Signature</span>
-                    {% elif item.category == "Dessert" %}
-                        <span class="menu-tag">Sweet</span>
-                    {% endif %}
-                    {% if item.vegan %}
-                        <span class="menu-tag">Vegan Friendly</span>
-                    {% endif %}
-                </div>
-                <p class="price">${{ "%.2f"|format(item.price) }}</p>
-                <form action="{{ url_for('add_to_cart') }}" method="POST">
-                    <input type="hidden" name="item_name" value="{{ item.name }}">
-                    <input type="hidden" name="price" value="{{ item.price }}">
-                    <input type="hidden" name="redirect_to" value="{{ url_for('menu_page') }}">
-                    <button type="submit" class="button">Add to Cart</button>
-                </form>
-            </div>
-            {% endfor %}
-        </div>
-    </section>
-{% endif %}
+function initCarousels() {
+    document.querySelectorAll('.menu-carousel').forEach((carousel, index) => {
+        carouselPositions[index] = 0;
+        updateCarouselButtons(index);
+        setupSwipe(carousel, index);
+    });
+}
+
+function scrollCarousel(carouselId, direction) {
+    const carousel = document.getElementById(`carousel-${carouselId}`);
+    if (!carousel) return;
+    
+    const track = carousel.querySelector('.menu-carousel-track');
+    const cards = track.querySelectorAll('.menu-card');
+    const cardWidth = cards[0] ? cards[0].offsetWidth + 18 : 268; // card width + gap
+    const visibleCards = Math.floor(carousel.offsetWidth / cardWidth);
+    const totalCards = cards.length;
+    const maxPosition = Math.max(0, totalCards - visibleCards);
+    
+    carouselPositions[carouselId] += direction;
+    carouselPositions[carouselId] = Math.max(0, Math.min(carouselPositions[carouselId], maxPosition));
+    
+    const scrollAmount = carouselPositions[carouselId] * cardWidth;
+    track.style.transform = `translateX(-${scrollAmount}px)`;
+    
+    updateCarouselButtons(carouselId);
+    updateIndicators(carouselId, totalCards, visibleCards);
+}
+
+function updateCarouselButtons(carouselId) {
+    const carousel = document.getElementById(`carousel-${carouselId}`);
+    if (!carousel) return;
+    
+    const track = carousel.querySelector('.menu-carousel-track');
+    const cards = track.querySelectorAll('.menu-card');
+    const cardWidth = cards[0] ? cards[0].offsetWidth + 18 : 268;
+    const visibleCards = Math.floor(carousel.offsetWidth / cardWidth);
+    const totalCards = cards.length;
+    const maxPosition = Math.max(0, totalCards - visibleCards);
+    
+    const prevBtn = carousel.parentElement.querySelector('.carousel-btn-prev');
+    const nextBtn = carousel.parentElement.querySelector('.carousel-btn-next');
+    
+    if (prevBtn) {
+        prevBtn.style.opacity = carouselPositions[carouselId] <= 0 ? '0.3' : '1';
+        prevBtn.disabled = carouselPositions[carouselId] <= 0;
+    }
+    
+    if (nextBtn) {
+        nextBtn.style.opacity = carouselPositions[carouselId] >= maxPosition ? '0.3' : '1';
+        nextBtn.disabled = carouselPositions[carouselId] >= maxPosition;
+    }
+}
+
+function updateIndicators(carouselId, totalCards, visibleCards) {
+    const indicators = document.getElementById(`indicators-${carouselId}`);
+    if (!indicators) return;
+    
+    const totalSlides = Math.ceil(totalCards / visibleCards);
+    indicators.innerHTML = '';
+    
+    for (let i = 0; i < totalSlides; i++) {
+        const dot = document.createElement('span');
+        dot.className = 'carousel-dot';
+        if (i === Math.floor(carouselPositions[carouselId] / visibleCards)) {
+            dot.classList.add('active');
+        }
+        dot.onclick = () => {
+            carouselPositions[carouselId] = i * visibleCards;
+            const carousel = document.getElementById(`carousel-${carouselId}`);
+            const track = carousel.querySelector('.menu-carousel-track');
+            const cards = track.querySelectorAll('.menu-card');
+            const cardWidth = cards[0] ? cards[0].offsetWidth + 18 : 268;
+            const scrollAmount = carouselPositions[carouselId] * cardWidth;
+            track.style.transform = `translateX(-${scrollAmount}px)`;
+            updateCarouselButtons(carouselId);
+            updateIndicators(carouselId, totalCards, visibleCards);
+        };
+        indicators.appendChild(dot);
+    }
+}
+
+function setupSwipe(carousel, carouselId) {
+    let startX = 0;
+    let currentX = 0;
+    let isDragging = false;
+    
+    carousel.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        isDragging = true;
+    });
+    
+    carousel.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        currentX = e.touches[0].clientX;
+        const diff = startX - currentX;
+        const track = carousel.querySelector('.menu-carousel-track');
+        const cards = track.querySelectorAll('.menu-card');
+        const cardWidth = cards[0] ? cards[0].offsetWidth + 18 : 268;
+        const currentScroll = carouselPositions[carouselId] * cardWidth;
+        track.style.transform = `translateX(-${currentScroll + diff}px)`;
+    });
+    
+    carousel.addEventListener('touchend', () => {
+        if (!isDragging) return;
+        isDragging = false;
+        
+        const diff = startX - currentX;
+        const threshold = 50; // Minimum swipe distance
+        
+        if (Math.abs(diff) > threshold) {
+            if (diff > 0) {
+                scrollCarousel(carouselId, 1); // Swipe left = next
+            } else {
+                scrollCarousel(carouselId, -1); // Swipe right = previous
+            }
+        } else {
+            // Snap back to current position
+            const track = carousel.querySelector('.menu-carousel-track');
+            const cards = track.querySelectorAll('.menu-card');
+            const cardWidth = cards[0] ? cards[0].offsetWidth + 18 : 268;
+            const scrollAmount = carouselPositions[carouselId] * cardWidth;
+            track.style.transform = `translateX(-${scrollAmount}px)`;
+        }
+    });
+    
+    // Mouse drag support
+    let mouseStartX = 0;
+    let mouseCurrentX = 0;
+    let isMouseDragging = false;
+    
+    carousel.addEventListener('mousedown', (e) => {
+        mouseStartX = e.clientX;
+        isMouseDragging = true;
+        carousel.style.cursor = 'grabbing';
+    });
+    
+    carousel.addEventListener('mousemove', (e) => {
+        if (!isMouseDragging) return;
+        mouseCurrentX = e.clientX;
+        const diff = mouseStartX - mouseCurrentX;
+        const track = carousel.querySelector('.menu-carousel-track');
+        const cards = track.querySelectorAll('.menu-card');
+        const cardWidth = cards[0] ? cards[0].offsetWidth + 18 : 268;
+        const currentScroll = carouselPositions[carouselId] * cardWidth;
+        track.style.transform = `translateX(-${currentScroll + diff}px)`;
+    });
+    
+    carousel.addEventListener('mouseup', () => {
+        if (!isMouseDragging) return;
+        isMouseDragging = false;
+        carousel.style.cursor = 'grab';
+        
+        const diff = mouseStartX - mouseCurrentX;
+        const threshold = 50;
+        
+        if (Math.abs(diff) > threshold) {
+            if (diff > 0) {
+                scrollCarousel(carouselId, 1);
+            } else {
+                scrollCarousel(carouselId, -1);
+            }
+        } else {
+            const track = carousel.querySelector('.menu-carousel-track');
+            const cards = track.querySelectorAll('.menu-card');
+            const cardWidth = cards[0] ? cards[0].offsetWidth + 18 : 268;
+            const scrollAmount = carouselPositions[carouselId] * cardWidth;
+            track.style.transform = `translateX(-${scrollAmount}px)`;
+        }
+    });
+    
+    carousel.addEventListener('mouseleave', () => {
+        if (isMouseDragging) {
+            isMouseDragging = false;
+            carousel.style.cursor = 'grab';
+            const track = carousel.querySelector('.menu-carousel-track');
+            const cards = track.querySelectorAll('.menu-card');
+            const cardWidth = cards[0] ? cards[0].offsetWidth + 18 : 268;
+            const scrollAmount = carouselPositions[carouselId] * cardWidth;
+            track.style.transform = `translateX(-${scrollAmount}px)`;
+        }
+    });
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    initCarousels();
+    
+    // Update on window resize
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            document.querySelectorAll('.menu-carousel').forEach((carousel, index) => {
+                const track = carousel.querySelector('.menu-carousel-track');
+                const cards = track.querySelectorAll('.menu-card');
+                const cardWidth = cards[0] ? cards[0].offsetWidth + 18 : 268;
+                const scrollAmount = carouselPositions[index] * cardWidth;
+                track.style.transform = `translateX(-${scrollAmount}px)`;
+                updateCarouselButtons(index);
+            });
+        }, 250);
+    });
+});
+</script>
 
 {% endblock %}

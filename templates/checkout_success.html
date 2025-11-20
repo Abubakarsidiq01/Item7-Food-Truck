@@ -1,15 +1,130 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h1>Order Confirmed</h1>
+<div class="success-container">
+    <div class="success-icon">✓</div>
+    <h1>Order Confirmed!</h1>
+    
+    <p class="success-message">Thank you, <strong>{{ customer_name }}</strong>! Your order has been placed successfully.</p>
+    
+    <div class="order-details">
+        <div style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                <span>Subtotal:</span>
+                <span>${{ "%.2f"|format(subtotal) }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; color: #666;">
+                <span>Tax:</span>
+                <span>${{ "%.2f"|format(tax_amount) }}</span>
+            </div>
+            {% if tip_amount and tip_amount > 0 %}
+            <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; color: #666;">
+                <span>Tip:</span>
+                <span>${{ "%.2f"|format(tip_amount) }}</span>
+            </div>
+            {% endif %}
+            <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 2px solid #d6001c; margin-top: 8px; font-size: 18px; font-weight: 600; color: #d6001c;">
+                <strong>Total:</strong>
+                <strong>${{ "%.2f"|format(total) }}</strong>
+            </div>
+        </div>
+        {% if payment_method == "stripe" %}
+            <p><strong>Payment:</strong> Credit/Debit Card (Processed)</p>
+            {% if payment_id %}
+                <p><small>Transaction ID: {{ payment_id }}</small></p>
+            {% endif %}
+        {% else %}
+            <p><strong>Payment:</strong> Cash on Delivery</p>
+            <p class="info-text">Please have exact change ready when your order arrives.</p>
+        {% endif %}
+    </div>
+    
+    <p class="delivery-info">Your order will be prepared and delivered to the address you provided.</p>
+    
+    <div class="success-actions">
+        <a href="{{ url_for('home') }}" class="button">Back to Home</a>
+        <a href="{{ url_for('menu_page') }}" class="button secondary">Order More Food</a>
+    </div>
+</div>
 
-<p>Thank you, {{ customer_name }}! Your order has been placed.</p>
-<p><strong>Total paid:</strong> ${{ "%.2f"|format(total) }}</p>
-<p>You can now close this page or continue browsing the menu.</p>
+<style>
+.success-container {
+    max-width: 600px;
+    margin: 40px auto;
+    text-align: center;
+    padding: 40px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}
 
-<p>
-    <a href="{{ url_for('home') }}" class="button">Back to Home</a>
-    <a href="{{ url_for('menu_page') }}" class="button">Order More Food</a>
-</p>
+.success-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: #4CAF50;
+    color: white;
+    font-size: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    font-weight: bold;
+}
+
+.success-container h1 {
+    color: #1a1a1a;
+    margin-bottom: 15px;
+}
+
+.success-message {
+    font-size: 16px;
+    color: #333;
+    margin-bottom: 25px;
+}
+
+.order-details {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin: 25px 0;
+    text-align: left;
+}
+
+.order-details p {
+    margin: 10px 0;
+    color: #333;
+}
+
+.info-text {
+    background: #fff3cd;
+    padding: 10px;
+    border-radius: 6px;
+    margin-top: 10px;
+    font-size: 13px;
+    color: #856404;
+}
+
+.delivery-info {
+    color: #666;
+    font-size: 14px;
+    margin: 20px 0;
+}
+
+.success-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 30px;
+}
+
+.button.secondary {
+    background: #6c757d;
+}
+
+.button.secondary:hover {
+    background: #5a6268;
+}
+</style>
 
 {% endblock %}

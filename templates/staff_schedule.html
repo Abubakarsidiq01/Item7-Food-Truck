@@ -1,67 +1,424 @@
 {% extends "staff_layout.html" %}
 {% block staff_content %}
 
+<!-- Time Clock Section -->
+{% if active_shift %}
+<section class="panel-card" style="background: linear-gradient(135deg, #fff5f5 0%, #fff 100%); border: 2px solid #d6001c;">
+    <div class="panel-header">
+        <div>
+            <h2>⏰ Time Clock - Active Shift</h2>
+            <p class="portal-note">You're currently on the clock!</p>
+        </div>
+    </div>
+    
+    <div class="time-clock-display">
+        <div class="shift-info-card">
+            <div class="shift-date">
+                <strong>{{ today.strftime('%A, %B %d, %Y') }}</strong>
+            </div>
+            <div class="shift-times">
+                <div class="time-block">
+                    <span class="time-label">Scheduled:</span>
+                    <span class="time-value">{{ active_shift.scheduled_start }} - {{ active_shift.scheduled_end }}</span>
+                </div>
+                {% if active_shift.check_in_time %}
+                <div class="time-block">
+                    <span class="time-label">Checked In:</span>
+                    <span class="time-value check-in-time">{{ active_shift.check_in_time }}</span>
+                </div>
+                {% endif %}
+                {% if active_shift.break_start %}
+                <div class="time-block">
+                    <span class="time-label">Break Started:</span>
+                    <span class="time-value break-time">{{ active_shift.break_start }}</span>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="time-clock-actions">
+                {% if active_shift.status == "checked_in" %}
+                    <form action="{{ url_for('time_clock_break') }}" method="POST" style="display: inline;">
+                        <input type="hidden" name="shift_id" value="{{ active_shift.shift_id }}">
+                        <button type="submit" class="button" style="background: #ff9800;">
+                            🍽️ Start Break
+                        </button>
+                    </form>
+                    <form action="{{ url_for('time_clock_checkout') }}" method="POST" style="display: inline;">
+                        <input type="hidden" name="shift_id" value="{{ active_shift.shift_id }}">
+                        <button type="submit" class="button secondary" onclick="return confirm('End your shift? This will calculate your total hours worked.')">
+                            ✅ Check Out (End Shift)
+                        </button>
+                    </form>
+                    <form action="{{ url_for('time_clock_checkout_early') }}" method="POST" style="display: inline;">
+                        <input type="hidden" name="shift_id" value="{{ active_shift.shift_id }}">
+                        <button type="submit" class="button" style="background: #dc3545;" onclick="return confirm('Check out early? This will mark your shift as completed early.')">
+                            🚨 Check Out Early (Emergency)
+                        </button>
+                    </form>
+                {% elif active_shift.status == "on_break" %}
+                    <form action="{{ url_for('time_clock_break_end') }}" method="POST" style="display: inline;">
+                        <input type="hidden" name="shift_id" value="{{ active_shift.shift_id }}">
+                        <button type="submit" class="button" style="background: #4CAF50;">
+                            🔄 End Break (Back to Work)
+                        </button>
+                    </form>
+                    <form action="{{ url_for('time_clock_checkout_early') }}" method="POST" style="display: inline;">
+                        <input type="hidden" name="shift_id" value="{{ active_shift.shift_id }}">
+                        <button type="submit" class="button" style="background: #dc3545;" onclick="return confirm('Check out early? This will mark your shift as completed early.')">
+                            🚨 Check Out Early (Emergency)
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+            
+            <!-- Shift Notes Section -->
+            <div class="shift-notes-section" style="margin-top: 24px; padding-top: 24px; border-top: 2px solid #e0e0e0;">
+                <h3 style="margin-bottom: 12px; font-size: 18px;">📝 Shift Notes</h3>
+                <form action="{{ url_for('add_shift_note') }}" method="POST">
+                    <input type="hidden" name="shift_id" value="{{ active_shift.shift_id }}">
+                    <textarea name="notes" rows="3" placeholder="Add notes about your shift (e.g., busy day, special events, issues, etc.)" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-family: inherit; font-size: 14px;">{{ active_shift.notes or '' }}</textarea>
+                    <div style="margin-top: 8px;">
+                        <button type="submit" class="button" style="background: #2196F3;">
+                            💾 Save Notes
+                        </button>
+                    </div>
+                </form>
+                {% if active_shift.notes %}
+                <div style="margin-top: 12px; padding: 12px; background: #f8f9fa; border-radius: 8px; font-size: 14px; color: #333;">
+                    <strong>Current Notes:</strong>
+                    <p style="margin: 8px 0 0; white-space: pre-wrap;">{{ active_shift.notes }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+{% else %}
 <section class="panel-card">
     <div class="panel-header">
         <div>
-            <h2>Weekly Schedule</h2>
-            <p class="portal-note">Click on a date to view and book available slots</p>
+            <h2>⏰ Time Clock</h2>
+            <p class="portal-note">No active shift. Claim a shift below to get started!</p>
         </div>
     </div>
-    <div class="week-calendar">
-        {% for day in week_overview %}
-            <a href="{{ url_for('staff_schedule', date=day.date.isoformat()) }}" 
-               class="week-day-link {{ 'inactive' if not day.is_working_day }} {{ 'selected' if day.is_selected }}">
-                <div class="week-day {{ 'inactive' if not day.is_working_day }} {{ 'selected' if day.is_selected }}">
-                    <span class="week-label">{{ day.label[:3] }}</span>
-                    <span class="week-date">{{ day.date.day }}</span>
-                    {% if day.shifts %}
-                        <div class="week-dot active"></div>
-                        <small>{{ day.shifts|length }} shift{% if day.shifts|length > 1 %}s{% endif %}</small>
-                    {% else %}
-                        <div class="week-dot"></div>
-                        <small>No shifts</small>
+</section>
+{% endif %}
+
+<!-- Claim Shift Section -->
+<section class="panel-card">
+    <div class="panel-header">
+        <div>
+            <h2>📅 Claim a Shift</h2>
+            <p class="portal-note">Select a date and time slot to claim your shift</p>
+        </div>
+    </div>
+    
+    <div class="form-card" style="max-width: 500px;">
+        <form action="{{ url_for('claim_shift') }}" method="POST">
+            <label for="shift_date">Date</label>
+            <input type="date" id="shift_date" name="date" 
+                   min="{{ today.isoformat() }}" 
+                   value="{{ today.isoformat() }}" 
+                   required>
+            
+            <label for="shift_start">Start Time</label>
+            <select id="shift_start" name="start_time" required>
+                <option value="">Select start time...</option>
+                <option value="09:00">9:00 AM</option>
+                <option value="10:00">10:00 AM</option>
+                <option value="11:00">11:00 AM</option>
+                <option value="12:00">12:00 PM</option>
+                <option value="13:00">1:00 PM</option>
+                <option value="14:00">2:00 PM</option>
+                <option value="15:00">3:00 PM</option>
+                <option value="16:00">4:00 PM</option>
+                <option value="17:00">5:00 PM</option>
+            </select>
+            
+            <label for="shift_end">End Time</label>
+            <select id="shift_end" name="end_time" required>
+                <option value="">Select end time...</option>
+                <option value="13:00">1:00 PM</option>
+                <option value="14:00">2:00 PM</option>
+                <option value="15:00">3:00 PM</option>
+                <option value="16:00">4:00 PM</option>
+                <option value="17:00">5:00 PM</option>
+                <option value="18:00">6:00 PM</option>
+                <option value="19:00">7:00 PM</option>
+                <option value="20:00">8:00 PM</option>
+                <option value="21:00">9:00 PM</option>
+            </select>
+            
+            <div class="form-actions">
+                <button type="submit" class="button">Claim Shift</button>
+            </div>
+        </form>
+    </div>
+</section>
+
+<!-- Upcoming Shifts -->
+{% if upcoming_shifts %}
+<section class="panel-card">
+    <div class="panel-header">
+        <div>
+            <h2>📋 Upcoming Shifts</h2>
+            <p class="portal-note">Your scheduled shifts for the next 7 days</p>
+        </div>
+    </div>
+    
+    <div class="shifts-list">
+        {% for shift in upcoming_shifts %}
+        <div class="shift-item">
+            <div class="shift-item-content">
+                <div class="shift-date-badge">
+                    <strong>{{ shift.date }}</strong>
+                </div>
+                <div class="shift-details">
+                    <div class="shift-time">
+                        <span class="time-label">Scheduled:</span>
+                        <span>{{ shift.scheduled_start }} - {{ shift.scheduled_end }}</span>
+                    </div>
+                    <div class="shift-status">
+                        <span class="status-badge status-{{ shift.status }}">
+                            {% if shift.status == "scheduled" %}
+                                📅 Scheduled
+                            {% elif shift.status == "checked_in" %}
+                                ✅ Checked In
+                            {% elif shift.status == "on_break" %}
+                                🍽️ On Break
+                            {% elif shift.status == "completed" %}
+                                ✅ Completed ({{ shift.total_hours }}h)
+                                {% if shift.early_checkout %}
+                                🚨 Early
+                                {% endif %}
+                            {% else %}
+                                {{ shift.status }}
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% if shift.notes %}
+                    <div style="margin-top: 8px; padding: 8px; background: #f8f9fa; border-radius: 6px; font-size: 12px; color: #666;">
+                        <strong>Notes:</strong> {{ shift.notes }}
+                    </div>
                     {% endif %}
                 </div>
-            </a>
+                {% if shift.date == today.isoformat() and shift.status == "scheduled" %}
+                <div class="shift-actions">
+                    <form action="{{ url_for('time_clock_checkin') }}" method="POST" style="display: inline;">
+                        <input type="hidden" name="shift_id" value="{{ shift.shift_id }}">
+                        <button type="submit" class="button" style="background: #4CAF50;">
+                            ✅ Check In
+                        </button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+        </div>
         {% endfor %}
     </div>
 </section>
+{% endif %}
 
-<section class="panel-card" id="open-slots">
+<!-- Work History -->
+{% if past_shifts %}
+<section class="panel-card">
     <div class="panel-header">
         <div>
-            <h2>Available Slots on {{ selected_date.strftime('%A, %B %d, %Y') }}</h2>
+            <h2>📊 Work History</h2>
+            <p class="portal-note">Your completed shifts and hours worked</p>
+            <p style="margin-top: 8px; font-size: 14px; color: #666;">
+                <strong>This Week:</strong> {{ "%.1f"|format(total_week_hours) }} hours
+            </p>
         </div>
     </div>
-    {% if selected_date.strftime('%A') not in ['Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
-        <div class="panel-empty">
-            <p>This is not a working day. Please select a working day (Tuesday - Sunday).</p>
-        </div>
-    {% elif available_slots %}
-        <ul class="schedule-list">
-            {% for slot in available_slots %}
-                <li class="schedule-item">
-                    <div class="schedule-item-content">
-                        <span class="slot-time">{{ slot }}</span>
-                        <form action="{{ url_for('book_appointment') }}" method="POST" style="display: inline;">
-                            <input type="hidden" name="manager" value="{{ user.first }} {{ user.last }}">
-                            <input type="hidden" name="date" value="{{ selected_date.isoformat() }}">
-                            <input type="hidden" name="time" value="{{ slot }}">
-                            <input type="hidden" name="staff_email" value="{{ user.email }}">
-                            <input type="hidden" name="work_time" value="Self-booked shift">
-                            <button type="submit" class="button secondary">Book This Slot</button>
-                        </form>
+    
+    <div class="shifts-list">
+        {% for shift in past_shifts %}
+        <div class="shift-item">
+            <div class="shift-item-content">
+                <div class="shift-date-badge">
+                    <strong>{{ shift.date }}</strong>
+                </div>
+                <div class="shift-details">
+                    <div class="shift-time">
+                        <span class="time-label">Scheduled:</span>
+                        <span>{{ shift.scheduled_start }} - {{ shift.scheduled_end }}</span>
                     </div>
-                </li>
-            {% endfor %}
-        </ul>
-    {% else %}
-        <div class="panel-empty">
-            <p>No available time slots for {{ selected_date.strftime('%A, %B %d') }}. All slots are booked or this is not a working day.</p>
+                    {% if shift.check_in_time %}
+                    <div class="shift-time" style="font-size: 12px; color: #666;">
+                        <span>Checked In: {{ shift.check_in_time.split(' ')[1] if ' ' in shift.check_in_time else shift.check_in_time }}</span>
+                        {% if shift.check_out_time %}
+                        <span> | Out: {{ shift.check_out_time.split(' ')[1] if ' ' in shift.check_out_time else shift.check_out_time }}</span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    <div class="shift-hours">
+                        <strong style="color: #d6001c; font-size: 16px;">{{ shift.total_hours }} hours</strong>
+                        {% if shift.early_checkout %}
+                        <span class="status-badge" style="background: #ffebee; color: #c62828; margin-left: 8px;">🚨 Early Checkout</span>
+                        {% endif %}
+                    </div>
+                    {% if shift.notes %}
+                    <div style="margin-top: 8px; padding: 8px; background: #f8f9fa; border-radius: 6px; font-size: 12px; color: #666;">
+                        <strong>Notes:</strong> {{ shift.notes }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
         </div>
-    {% endif %}
+        {% endfor %}
+    </div>
 </section>
+{% endif %}
+
+<style>
+.time-clock-display {
+    padding: 20px 0;
+}
+
+.shift-info-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.shift-date {
+    font-size: 20px;
+    margin-bottom: 16px;
+    color: #1a1a1a;
+    text-align: center;
+    padding-bottom: 16px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.shift-times {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.time-block {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.time-label {
+    font-size: 14px;
+    color: #666;
+    font-weight: 500;
+}
+
+.time-value {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1a1a1a;
+}
+
+.check-in-time {
+    color: #4CAF50;
+}
+
+.break-time {
+    color: #ff9800;
+}
+
+.time-clock-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.shifts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.shift-item {
+    background: #fff;
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 0.2s ease;
+}
+
+.shift-item:hover {
+    border-color: #d6001c;
+    box-shadow: 0 2px 8px rgba(214, 0, 28, 0.1);
+}
+
+.shift-item-content {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.shift-date-badge {
+    background: linear-gradient(135deg, #d6001c, #b8001f);
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    min-width: 120px;
+    text-align: center;
+}
+
+.shift-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.shift-time {
+    font-size: 14px;
+    color: #333;
+}
+
+.shift-hours {
+    margin-top: 4px;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 16px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.status-scheduled {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.status-checked_in {
+    background: #e8f5e9;
+    color: #4CAF50;
+}
+
+.status-on_break {
+    background: #fff3e0;
+    color: #ff9800;
+}
+
+.status-completed {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.shift-actions {
+    margin-left: auto;
+}
+</style>
 
 {% endblock %}
-

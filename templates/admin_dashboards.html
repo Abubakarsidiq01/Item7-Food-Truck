@@ -2,7 +2,7 @@
 {% block content %}
 
 <div class="page-header">
-    <h1 class="page-title">Admin Dashboard</h1>
+    <h1 class="page-title">Super Admin Dashboard</h1>
     <span class="pill-badge">Signed in as {{ admin_email }}</span>
 </div>
 
@@ -21,10 +21,34 @@
     <section class="card">
         <h2>Quick Actions</h2>
         <p class="section-subtitle">Jump directly into common admin workflows.</p>
+        <div class="form-actions" style="flex-direction: column; gap: 10px;">
+            <a href="{{ url_for('add_staff_form') }}" class="button" style="width: 100%; text-align: center;">
+                ➕ Add New Staff Member
+            </a>
+            <a href="{{ url_for('staff_page') }}" class="button secondary" style="width: 100%; text-align: center;">Manage Staff</a>
+            <a href="{{ url_for('schedules_page') }}" class="button secondary" style="width: 100%; text-align: center;">Manage Schedules</a>
+            <a href="{{ url_for('admin_orders_page') }}" class="button secondary" style="width: 100%; text-align: center;">Review Orders</a>
+            <a href="{{ url_for('staff_statistics') }}" class="button secondary" style="width: 100%; text-align: center;">View Statistics</a>
+        </div>
+    </section>
+</div>
+
+<div class="dashboard-grid" style="margin-top: 20px;">
+    <section class="card">
+        <h2>Staff Management</h2>
+        <p class="section-subtitle">Add, remove, or modify staff accounts.</p>
         <div class="form-actions">
-            <a href="{{ url_for('staff_page') }}" class="button">Manage Staff</a>
-            <a href="{{ url_for('schedules_page') }}" class="button">Manage Schedules</a>
-            <a href="{{ url_for('admin_orders_page') }}" class="button secondary">Review Orders</a>
+            <a href="{{ url_for('add_staff_form') }}" class="button">Add Staff</a>
+            <a href="{{ url_for('staff_page') }}" class="button secondary">View All Staff</a>
+        </div>
+    </section>
+
+    <section class="card">
+        <h2>Analytics & Reports</h2>
+        <p class="section-subtitle">View detailed statistics and reports.</p>
+        <div class="form-actions">
+            <a href="{{ url_for('staff_statistics') }}" class="button">View Statistics</a>
+            <a href="{{ url_for('staff_orders') }}" class="button secondary">View Orders</a>
         </div>
     </section>
 </div>

@@ -1,16 +1,24 @@
-Item_ID,Name,Description,Price,Category,Vegan,Image,Allergens,Available
-1,Original Chicken Sandwich Combo,"Crispy chicken sandwich, fries & drink.",7.99,Food,False,burger.svg,"gluten,wheat,egg",True
-2,Wings & Wedges Box,Spicy wings with seasoned potato wedges.,9.49,Food,False,wings.svg,"gluten,wheat",True
-3,Family Bucket,"12 pc chicken, large fries & slaw.",19.99,Food,False,bucket.svg,"gluten,wheat",True
-4,BBQ Chicken Wrap,"Grilled chicken, BBQ sauce, lettuce, and cheese in a warm tortilla.",8.49,Food,False,burger.svg,"gluten,dairy",True
-5,Chicken Quesadilla,"Grilled chicken, cheese, and peppers in a crispy tortilla.",9.99,Food,False,burger.svg,"gluten,dairy",True
-7,Smoky Tofu Wrap,"Grilled tofu, crisp veggies, spicy mayo in a warm wrap.",9.25,Food,True,veggie.svg,"soy,gluten",True
-8,Garden Salad,"Mixed greens, tomatoes, cucumbers, carrots, and your choice of dressing.",5.99,Food,True,veggie.svg,,True
-9,Veggie Burger,"Plant-based patty with lettuce, tomato, onion, and special sauce.",7.99,Food,True,burger.svg,"gluten,soy",True
-10,Coca-Cola,Classic Coca-Cola soft drink.,2.49,Drinks,True,drink.svg,,True
-11,Orange Juice,Fresh squeezed orange juice.,3.49,Drinks,True,drink.svg,,True
-12,Iced Tea,"Refreshing iced tea, sweetened or unsweetened.",2.99,Drinks,True,drink.svg,,True
-13,Chocolate Milkshake,Creamy chocolate milkshake topped with whipped cream.,4.99,Drinks,False,drink.svg,dairy,True
-14,Chocolate Chip Cookies,Freshly baked chocolate chip cookies (3pc).,3.99,Dessert,False,dessert.svg,"gluten,dairy,egg",True
-15,Apple Pie Slice,Warm apple pie slice with vanilla ice cream.,5.99,Dessert,False,dessert.svg,"gluten,dairy",True
-16,Item7,Fola,50.0,Drinks,False,Screenshot_2025-11-17_011955.png,,True
+Item_ID,Name,Description,Price,Category,Vegan,Image,Allergens
+MENU_001,Original Chicken Sandwich Combo,"Crispy chicken sandwich, fries & drink.",7.99,Combo,FALSE,menu/20251119210038_Screenshot_2025-11-19_at_9.00.04_PM.png,"gluten,wheat,egg"
+MENU_002,Classic Burger Combo,"Juicy beef patty, lettuce, tomato, pickles, fries & drink.",8.99,Combo,FALSE,burger.svg,"gluten,wheat,egg,dairy"
+MENU_003,BBQ Pulled Pork Combo,"Slow-cooked pulled pork, coleslaw, fries & drink.",9.99,Combo,FALSE,burger.svg,"gluten,wheat"
+MENU_004,Double Cheeseburger Combo,"Two beef patties, double cheese, special sauce, fries & drink.",10.99,Combo,FALSE,burger.svg,"gluten,wheat,egg,dairy"
+MENU_005,Wings & Wedges Box,Spicy wings with seasoned potato wedges.,9.49,Main,FALSE,wings.svg,"gluten,wheat"
+MENU_006,Family Bucket,"12 pc chicken, large fries & slaw.",19.99,Main,FALSE,bucket.svg,"gluten,wheat"
+MENU_007,Fish Tacos (3pc),"Beer-battered fish, cabbage slaw, lime crema, corn tortillas.",11.99,Main,FALSE,taco.svg,"gluten,wheat,fish,dairy"
+MENU_008,Loaded Nachos,"Tortilla chips, cheese, jalapeños, sour cream, guacamole.",8.99,Main,FALSE,nachos.svg,"gluten,wheat,dairy"
+MENU_009,Veggie Bowl,Rice bowl with crispy veggies and sauce.,8.49,Veg,TRUE,veggie.svg,soy
+MENU_010,Smoky Tofu Wrap,"Grilled tofu, crisp veggies, spicy mayo in a warm wrap.",9.25,Veg,TRUE,veggie.svg,"soy,gluten"
+MENU_011,Black Bean Burger,"House-made black bean patty, avocado, chipotle mayo.",7.99,Veg,TRUE,veggie.svg,"gluten,wheat,soy"
+MENU_012,French Fries,Crispy golden fries with seasoning.,3.99,Side,TRUE,fries.svg,
+MENU_013,Onion Rings,"Beer-battered onion rings, served crispy.",4.99,Side,FALSE,fries.svg,"gluten,wheat,egg"
+MENU_014,Mac & Cheese,Creamy macaroni and cheese.,4.99,Side,FALSE,side.svg,"gluten,wheat,dairy"
+MENU_015,Coleslaw,Fresh cabbage slaw with creamy dressing.,2.99,Side,FALSE,side.svg,"dairy,egg"
+MENU_016,Loaded Fries,"Fries topped with cheese, bacon bits, and ranch.",6.99,Side,FALSE,fries.svg,"gluten,dairy"
+MENU_017,Soft Drink (Can),"Coca-Cola, Sprite, Fanta, or Dr. Pepper.",1.99,Drink,TRUE,drink.svg,
+MENU_018,Soft Drink (Large),32oz fountain drink - choose your flavor.,2.99,Drink,TRUE,drink.svg,
+MENU_019,Fresh Lemonade,"Freshly squeezed lemonade, sweet and tart.",3.49,Drink,TRUE,drink.svg,
+MENU_020,Iced Tea,Sweet or unsweetened iced tea.,2.49,Drink,TRUE,drink.svg,
+MENU_021,Bottled Water,16oz bottled water.,1.49,Drink,TRUE,drink.svg,
+MENU_022,Fresh Orange Juice,Freshly squeezed orange juice.,3.99,Drink,TRUE,drink.svg,
+MENU_023,Milk Shake,"Vanilla, chocolate, or strawberry milkshake.",4.99,Drink,FALSE,drink.svg,dairy

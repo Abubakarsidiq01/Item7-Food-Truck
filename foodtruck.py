@@ -62,6 +62,8 @@ class FoodTruck:
         self.staff = []
         self.schedules = []
         self.orders = []
+        self.deals = []
+        self.shifts = []
         self.menu_items = []
 
     # ---------- MENU DATA ----------
@@ -72,8 +74,8 @@ class FoodTruck:
         try:
             exists, readable, _ = self.check_file_permissions(path)
             if not exists:
-                # Initialize with default menu if file doesn't exist
-                self.initialize_default_menu()
+                # If menu.csv doesn't exist, migrate from hardcoded items
+                self._migrate_menu_to_csv()
                 return
             if not readable:
                 logger.error(f"Menu CSV not readable: {path}")
@@ -82,198 +84,304 @@ class FoodTruck:
             with open(path, newline="", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    if not row.get("Name"):  # Skip empty rows
-                        continue
-                    allergens_str = row.get("Allergens", "") or ""
+                    allergens_str = row.get("Allergens", "").strip()
                     allergens = [a.strip() for a in allergens_str.split(",") if a.strip()] if allergens_str else []
-                    
-                    try:
-                        price = float(row.get("Price", 0) or 0)
-                    except (ValueError, TypeError):
-                        price = 0.0
-                    
-                    # Parse Available field - handle both "True"/"False" strings and boolean values
-                    available_str = str(row.get("Available", "True")).strip()
-                    available = available_str.lower() in ("true", "1", "yes", "on")
                     
                     self.menu_items.append({
                         "item_id": row.get("Item_ID", ""),
-                        "name": row.get("Name", "").strip(),
-                        "description": row.get("Description", "").strip(),
-                        "price": price,
-                        "category": row.get("Category", "").strip(),
-                        "vegan": row.get("Vegan", "False").lower() == "true",
-                        "image": row.get("Image", "burger.svg").strip(),
+                        "name": row.get("Name", ""),
+                        "description": row.get("Description", ""),
+                        "price": float(row.get("Price", "0")),
+                        "category": row.get("Category", "Other"),
+                        "vegan": row.get("Vegan", "False").upper() == "TRUE",
+                        "image": row.get("Image", "burger.svg"),
                         "allergens": allergens,
-                        "available": available,
                     })
-                logger.info(f"Loaded {len(self.menu_items)} menu items from CSV")
         except FileNotFoundError:
-            self.initialize_default_menu()
+            self._migrate_menu_to_csv()
         except Exception as e:
-            logger.error(f"Error loading menu: {e}")
+            logger.error(f"Error loading menu from CSV: {e}", exc_info=True)
+            # Fallback to hardcoded items
+            self.menu_items = self._get_hardcoded_menu_items()
 
-    def initialize_default_menu(self, path="data/menu.csv"):
-        """Initialize menu CSV with default items"""
-        default_items = [
-            # Food Items (9 items)
-            {"Item_ID": "1", "Name": "Original Chicken Sandwich Combo", "Description": "Crispy chicken sandwich, fries & drink.", "Price": "7.99", "Category": "Food", "Vegan": "False", "Image": "burger.svg", "Allergens": "gluten,wheat,egg", "Available": "True"},
-            {"Item_ID": "2", "Name": "Wings & Wedges Box", "Description": "Spicy wings with seasoned potato wedges.", "Price": "9.49", "Category": "Food", "Vegan": "False", "Image": "wings.svg", "Allergens": "gluten,wheat", "Available": "True"},
-            {"Item_ID": "3", "Name": "Family Bucket", "Description": "12 pc chicken, large fries & slaw.", "Price": "19.99", "Category": "Food", "Vegan": "False", "Image": "bucket.svg", "Allergens": "gluten,wheat", "Available": "True"},
-            {"Item_ID": "4", "Name": "BBQ Chicken Wrap", "Description": "Grilled chicken, BBQ sauce, lettuce, and cheese in a warm tortilla.", "Price": "8.49", "Category": "Food", "Vegan": "False", "Image": "burger.svg", "Allergens": "gluten,dairy", "Available": "True"},
-            {"Item_ID": "5", "Name": "Chicken Quesadilla", "Description": "Grilled chicken, cheese, and peppers in a crispy tortilla.", "Price": "9.99", "Category": "Food", "Vegan": "False", "Image": "veggie.svg", "Allergens": "gluten,dairy", "Available": "True"},
-            {"Item_ID": "6", "Name": "Veggie Bowl", "Description": "Rice bowl with crispy veggies and sauce.", "Price": "8.49", "Category": "Food", "Vegan": "True", "Image": "veggie.svg", "Allergens": "soy", "Available": "True"},
-            {"Item_ID": "7", "Name": "Smoky Tofu Wrap", "Description": "Grilled tofu, crisp veggies, spicy mayo in a warm wrap.", "Price": "9.25", "Category": "Food", "Vegan": "True", "Image": "veggie.svg", "Allergens": "soy,gluten", "Available": "True"},
-            {"Item_ID": "8", "Name": "Garden Salad", "Description": "Mixed greens, tomatoes, cucumbers, carrots, and your choice of dressing.", "Price": "5.99", "Category": "Food", "Vegan": "True", "Image": "veggie.svg", "Allergens": "", "Available": "True"},
-            {"Item_ID": "9", "Name": "Veggie Burger", "Description": "Plant-based patty with lettuce, tomato, onion, and special sauce.", "Price": "7.99", "Category": "Food", "Vegan": "True", "Image": "burger.svg", "Allergens": "gluten,soy", "Available": "True"},
+    def _migrate_menu_to_csv(self, path="data/menu.csv"):
+        """Migrate hardcoded menu items to CSV"""
+        try:
+            hardcoded_items = self._get_hardcoded_menu_items()
+            os.makedirs(os.path.dirname(path), exist_ok=True)
             
-            # Drinks (4 items)
-            {"Item_ID": "10", "Name": "Coca-Cola", "Description": "Classic Coca-Cola soft drink.", "Price": "2.49", "Category": "Drinks", "Vegan": "True", "Image": "drink.svg", "Allergens": "", "Available": "True"},
-            {"Item_ID": "11", "Name": "Orange Juice", "Description": "Fresh squeezed orange juice.", "Price": "3.49", "Category": "Drinks", "Vegan": "True", "Image": "drink.svg", "Allergens": "", "Available": "True"},
-            {"Item_ID": "12", "Name": "Iced Tea", "Description": "Refreshing iced tea, sweetened or unsweetened.", "Price": "2.99", "Category": "Drinks", "Vegan": "True", "Image": "drink.svg", "Allergens": "", "Available": "True"},
-            {"Item_ID": "13", "Name": "Chocolate Milkshake", "Description": "Creamy chocolate milkshake topped with whipped cream.", "Price": "4.99", "Category": "Drinks", "Vegan": "False", "Image": "drink.svg", "Allergens": "dairy", "Available": "True"},
+            with open(path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=["Item_ID", "Name", "Description", "Price", "Category", "Vegan", "Image", "Allergens"])
+                writer.writeheader()
+                
+                for idx, item in enumerate(hardcoded_items, 1):
+                    item_id = f"MENU_{idx:03d}"
+                    writer.writerow({
+                        "Item_ID": item_id,
+                        "Name": _sanitize_for_csv(item["name"]),
+                        "Description": _sanitize_for_csv(item["description"]),
+                        "Price": str(item["price"]),
+                        "Category": item["category"],
+                        "Vegan": "TRUE" if item["vegan"] else "FALSE",
+                        "Image": item["image"],
+                        "Allergens": ",".join(item["allergens"]),
+                    })
             
-            # Desserts (2 items)
-            {"Item_ID": "14", "Name": "Chocolate Chip Cookies", "Description": "Freshly baked chocolate chip cookies (3pc).", "Price": "3.99", "Category": "Dessert", "Vegan": "False", "Image": "dessert.svg", "Allergens": "gluten,dairy,egg", "Available": "True"},
-            {"Item_ID": "15", "Name": "Apple Pie Slice", "Description": "Warm apple pie slice with vanilla ice cream.", "Price": "5.99", "Category": "Dessert", "Vegan": "False", "Image": "dessert.svg", "Allergens": "gluten,dairy", "Available": "True"},
+            logger.info(f"Migrated {len(hardcoded_items)} menu items to {path}")
+            self.load_menu_from_csv(path)
+        except Exception as e:
+            logger.error(f"Error migrating menu to CSV: {e}", exc_info=True)
+            self.menu_items = self._get_hardcoded_menu_items()
+
+    def _get_hardcoded_menu_items(self):
+        """Returns the original hardcoded menu items"""
+        return [
+            # Combo Meals
+            {
+                "name": "Original Chicken Sandwich Combo",
+                "description": "Crispy chicken sandwich, fries & drink.",
+                "price": 7.99,
+                "category": "Combo",
+                "vegan": False,
+                "image": "burger.svg",
+                "allergens": ["gluten", "wheat", "egg"],
+            },
+            {
+                "name": "Classic Burger Combo",
+                "description": "Juicy beef patty, lettuce, tomato, pickles, fries & drink.",
+                "price": 8.99,
+                "category": "Combo",
+                "vegan": False,
+                "image": "burger.svg",
+                "allergens": ["gluten", "wheat", "egg", "dairy"],
+            },
+            {
+                "name": "BBQ Pulled Pork Combo",
+                "description": "Slow-cooked pulled pork, coleslaw, fries & drink.",
+                "price": 9.99,
+                "category": "Combo",
+                "vegan": False,
+                "image": "burger.svg",
+                "allergens": ["gluten", "wheat"],
+            },
+            {
+                "name": "Double Cheeseburger Combo",
+                "description": "Two beef patties, double cheese, special sauce, fries & drink.",
+                "price": 10.99,
+                "category": "Combo",
+                "vegan": False,
+                "image": "burger.svg",
+                "allergens": ["gluten", "wheat", "egg", "dairy"],
+            },
+            # Main Dishes
+            {
+                "name": "Wings & Wedges Box",
+                "description": "Spicy wings with seasoned potato wedges.",
+                "price": 9.49,
+                "category": "Main",
+                "vegan": False,
+                "image": "wings.svg",
+                "allergens": ["gluten", "wheat"],
+            },
+            {
+                "name": "Family Bucket",
+                "description": "12 pc chicken, large fries & slaw.",
+                "price": 19.99,
+                "category": "Main",
+                "vegan": False,
+                "image": "bucket.svg",
+                "allergens": ["gluten", "wheat"],
+            },
+            {
+                "name": "Fish Tacos (3pc)",
+                "description": "Beer-battered fish, cabbage slaw, lime crema, corn tortillas.",
+                "price": 11.99,
+                "category": "Main",
+                "vegan": False,
+                "image": "taco.svg",
+                "allergens": ["gluten", "wheat", "fish", "dairy"],
+            },
+            {
+                "name": "Loaded Nachos",
+                "description": "Tortilla chips, cheese, jalapeños, sour cream, guacamole.",
+                "price": 8.99,
+                "category": "Main",
+                "vegan": False,
+                "image": "nachos.svg",
+                "allergens": ["gluten", "wheat", "dairy"],
+            },
+            # Vegetarian/Vegan Options
+            {
+                "name": "Veggie Bowl",
+                "description": "Rice bowl with crispy veggies and sauce.",
+                "price": 8.49,
+                "category": "Veg",
+                "vegan": True,
+                "image": "veggie.svg",
+                "allergens": ["soy"],
+            },
+            {
+                "name": "Smoky Tofu Wrap",
+                "description": "Grilled tofu, crisp veggies, spicy mayo in a warm wrap.",
+                "price": 9.25,
+                "category": "Veg",
+                "vegan": True,
+                "image": "veggie.svg",
+                "allergens": ["soy", "gluten"],
+            },
+            {
+                "name": "Black Bean Burger",
+                "description": "House-made black bean patty, avocado, chipotle mayo.",
+                "price": 7.99,
+                "category": "Veg",
+                "vegan": True,
+                "image": "veggie.svg",
+                "allergens": ["gluten", "wheat", "soy"],
+            },
+            # Sides
+            {
+                "name": "French Fries",
+                "description": "Crispy golden fries with seasoning.",
+                "price": 3.99,
+                "category": "Side",
+                "vegan": True,
+                "image": "fries.svg",
+                "allergens": [],
+            },
+            {
+                "name": "Onion Rings",
+                "description": "Beer-battered onion rings, served crispy.",
+                "price": 4.99,
+                "category": "Side",
+                "vegan": False,
+                "image": "fries.svg",
+                "allergens": ["gluten", "wheat", "egg"],
+            },
+            {
+                "name": "Mac & Cheese",
+                "description": "Creamy macaroni and cheese.",
+                "price": 4.99,
+                "category": "Side",
+                "vegan": False,
+                "image": "side.svg",
+                "allergens": ["gluten", "wheat", "dairy"],
+            },
+            {
+                "name": "Coleslaw",
+                "description": "Fresh cabbage slaw with creamy dressing.",
+                "price": 2.99,
+                "category": "Side",
+                "vegan": False,
+                "image": "side.svg",
+                "allergens": ["dairy", "egg"],
+            },
+            {
+                "name": "Loaded Fries",
+                "description": "Fries topped with cheese, bacon bits, and ranch.",
+                "price": 6.99,
+                "category": "Side",
+                "vegan": False,
+                "image": "fries.svg",
+                "allergens": ["gluten", "dairy"],
+            },
+            # Drinks
+            {
+                "name": "Soft Drink (Can)",
+                "description": "Coca-Cola, Sprite, Fanta, or Dr. Pepper.",
+                "price": 1.99,
+                "category": "Drink",
+                "vegan": True,
+                "image": "drink.svg",
+                "allergens": [],
+            },
+            {
+                "name": "Soft Drink (Large)",
+                "description": "32oz fountain drink - choose your flavor.",
+                "price": 2.99,
+                "category": "Drink",
+                "vegan": True,
+                "image": "drink.svg",
+                "allergens": [],
+            },
+            {
+                "name": "Fresh Lemonade",
+                "description": "Freshly squeezed lemonade, sweet and tart.",
+                "price": 3.49,
+                "category": "Drink",
+                "vegan": True,
+                "image": "drink.svg",
+                "allergens": [],
+            },
+            {
+                "name": "Iced Tea",
+                "description": "Sweet or unsweetened iced tea.",
+                "price": 2.49,
+                "category": "Drink",
+                "vegan": True,
+                "image": "drink.svg",
+                "allergens": [],
+            },
+            {
+                "name": "Bottled Water",
+                "description": "16oz bottled water.",
+                "price": 1.49,
+                "category": "Drink",
+                "vegan": True,
+                "image": "drink.svg",
+                "allergens": [],
+            },
+            {
+                "name": "Fresh Orange Juice",
+                "description": "Freshly squeezed orange juice.",
+                "price": 3.99,
+                "category": "Drink",
+                "vegan": True,
+                "image": "drink.svg",
+                "allergens": [],
+            },
+            {
+                "name": "Milk Shake",
+                "description": "Vanilla, chocolate, or strawberry milkshake.",
+                "price": 4.99,
+                "category": "Drink",
+                "vegan": False,
+                "image": "drink.svg",
+                "allergens": ["dairy"],
+            },
         ]
-        
-        exists, readable, writable = self.check_file_permissions(path)
-        if not exists:
-            try:
-                os.makedirs(os.path.dirname(path), exist_ok=True)
-                with open(path, "w", newline="") as f:
-                    writer = csv.DictWriter(f, fieldnames=["Item_ID", "Name", "Description", "Price", "Category", "Vegan", "Image", "Allergens", "Available"])
-                    writer.writeheader()
-                    writer.writerows(default_items)
-                logger.info(f"Initialized default menu: {path}")
-            except Exception as e:
-                logger.error(f"Error initializing default menu: {e}")
-        elif exists and readable:
-            # If file exists but is empty or has no items, reinitialize
-            try:
-                with open(path, "r", newline="") as f:
-                    reader = csv.DictReader(f)
-                    rows = list(reader)
-                    if len(rows) == 0 and writable:
-                        # File exists but is empty, reinitialize
-                        with open(path, "w", newline="") as f:
-                            writer = csv.DictWriter(f, fieldnames=["Item_ID", "Name", "Description", "Price", "Category", "Vegan", "Image", "Allergens", "Available"])
-                            writer.writeheader()
-                            writer.writerows(default_items)
-                        logger.info(f"Reinitialized empty menu: {path}")
-            except Exception as e:
-                logger.error(f"Error checking menu file: {e}")
 
     def get_menu_items(self):
-        """Returns list of available menu items"""
-        # Always reload to ensure fresh data
-        self.load_menu_from_csv()
-        # Return all items, filtering by availability
-        # Handle both boolean True and string "True" values
-        available_items = []
-        for item in self.menu_items:
-            available = item.get("available", True)
-            # Handle both boolean and string representations
-            if isinstance(available, bool):
-                if available:
-                    available_items.append(item)
-            elif isinstance(available, str):
-                if available.lower() in ("true", "1", "yes", "on"):
-                    available_items.append(item)
-            else:
-                # Default to True if value is unclear
-                available_items.append(item)
-        
-        # If no items available, try to initialize default menu
-        if not available_items:
-            logger.warning("No menu items found, initializing default menu")
-            self.initialize_default_menu()
+        """
+        Returns a list of menu items with details.
+        Loads from CSV if available, otherwise returns hardcoded items.
+        """
+        if not self.menu_items:
             self.load_menu_from_csv()
-            available_items = [item for item in self.menu_items if item.get("available", True)]
-        logger.info(f"Returning {len(available_items)} available menu items out of {len(self.menu_items)} total")
-        return available_items
+        
+        # Convert to format expected by templates (without item_id for backward compatibility)
+        result = []
+        for item in self.menu_items:
+            result.append({
+                "name": item["name"],
+                "description": item["description"],
+                "price": item["price"],
+                "category": item["category"],
+                "vegan": item["vegan"],
+                "image": item["image"],
+                "allergens": item["allergens"],
+                "item_id": item.get("item_id", ""),  # Include for management
+            })
+        return result
 
     def get_menu_allergens(self):
-        """Build a mapping from item name -> list of allergens"""
+        """
+        Build a mapping from item name -> list of allergens,
+        based on the menu items above.
+        """
         allergens_map = {}
         for item in self.get_menu_items():
-            allergens_map[item["name"]] = item.get("allergens", [])
+            allergens_map[item["name"]] = item["allergens"]
         return allergens_map
-
-    def save_menu_item(self, item_id, name, description, price, category, vegan, image, allergens, available, path="data/menu.csv"):
-        """Save or update a menu item"""
-        exists, readable, writable = self.check_file_permissions(path)
-        if not exists:
-            self.initialize_csv_files()
-        if not readable or not writable:
-            logger.error(f"Cannot save menu item: {path}")
-            return False
-
-        rows = []
-        updated = False
-        allergens_str = ",".join(allergens) if isinstance(allergens, list) else str(allergens)
-        
-        with open(path, "r", newline="") as f:
-            reader = csv.DictReader(f)
-            fieldnames = reader.fieldnames or []
-            for row in reader:
-                if row.get("Item_ID") == str(item_id):
-                    row["Name"] = name
-                    row["Description"] = description
-                    row["Price"] = str(price)
-                    row["Category"] = category
-                    row["Vegan"] = "True" if vegan else "False"
-                    row["Image"] = image
-                    row["Allergens"] = allergens_str
-                    row["Available"] = "True" if available else "False"
-                    updated = True
-                rows.append(row)
-
-        if not updated:
-            # Add new item
-            new_id = str(max([int(r.get("Item_ID", 0) or 0) for r in rows] + [0]) + 1) if rows else "1"
-            rows.append({
-                "Item_ID": new_id,
-                "Name": name,
-                "Description": description,
-                "Price": str(price),
-                "Category": category,
-                "Vegan": "True" if vegan else "False",
-                "Image": image,
-                "Allergens": allergens_str,
-                "Available": "True" if available else "False",
-            })
-
-        with open(path, "w", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerows(rows)
-        
-        self.load_menu_from_csv()
-        return True
-
-    def delete_menu_item(self, item_id, path="data/menu.csv"):
-        """Delete a menu item"""
-        exists, readable, writable = self.check_file_permissions(path)
-        if not exists or not readable or not writable:
-            return False
-
-        rows = []
-        with open(path, "r", newline="") as f:
-            reader = csv.DictReader(f)
-            fieldnames = reader.fieldnames or []
-            for row in reader:
-                if row.get("Item_ID") != str(item_id):
-                    rows.append(row)
-
-        with open(path, "w", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerows(rows)
-        
-        self.load_menu_from_csv()
-        return True
 
     def is_order_safe_for_allergy(self, items_text, allergy_text):
         """
@@ -618,69 +726,65 @@ class FoodTruck:
                 logger.error(f"Orders CSV not readable: {path}")
                 return
 
-            with open(path, newline="") as f:
+            with open(path, newline="", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
+                fieldnames = list(reader.fieldnames or [])
+                has_status = "Status" in fieldnames
+                
                 for row in reader:
-                    # Handle legacy orders without new fields
-                    subtotal = row.get("Subtotal", row.get("Price", "0.00"))
-                    delivery_fee = row.get("Delivery_Fee", "0.00")
-                    tip_amount = row.get("Tip_Amount", "0.00")
-                    total_price = row.get("Total_Price", str(float(subtotal) + float(delivery_fee) + float(tip_amount)))
+                    # Ensure Status field exists
+                    if not has_status:
+                        row["Status"] = "Pending"
                     
                     self.orders.append(
                         {
-                            "order_id": row["Order_ID"],
-                            "customer_name": row["Customer_Name"],
-                            "customer_email": row["Customer_Email"],
-                            "customer_phone": row.get("Customer_Phone", ""),
-                            "order_type": row.get("Order_Type", "delivery"),
-                            "delivery_address": row.get("Delivery_Address", ""),
-                            "address_lat": row.get("Address_Lat", ""),
-                            "address_lng": row.get("Address_Lng", ""),
-                            "delivery_instructions": row.get("Delivery_Instructions", ""),
-                            "pickup_instructions": row.get("Pickup_Instructions", ""),
-                            "item": row["Item"],
-                            "allergy_info": row["Allergy_Info"],
-                            "is_safe": row["Is_Safe"],
-                            "timestamp": row["Timestamp"],
+                            "order_id": str(row.get("Order_ID", "")),
+                            "customer_name": row.get("Customer_Name", ""),
+                            "customer_email": row.get("Customer_Email", ""),
+                            "item": row.get("Item", ""),
+                            "allergy_info": row.get("Allergy_Info", ""),
+                            "is_safe": row.get("Is_Safe", "YES"),
+                            "timestamp": row.get("Timestamp", ""),
                             "status": row.get("Status", "Pending"),
-                            "completed_by": row.get("Completed_By", ""),
-                            "subtotal": subtotal,
-                            "delivery_fee": delivery_fee,
-                            "tip_amount": tip_amount,
-                            "price": total_price,
-                            "payment_method": row.get("Payment_Method", "card"),
-                            "masked_card": row.get("Masked_Card", ""),
-                            "card_expiry": row.get("Card_Expiry", ""),
                         }
                     )
+                
+                # If Status column was missing, update the CSV file
+                if not has_status and len(self.orders) > 0:
+                    self._ensure_status_column(path)
+                    
         except FileNotFoundError:
             pass
-
-    def calculate_order_price(self, items_text):
-        """Calculate total price from items text (e.g., 'Item x2, Item2 x1')"""
-        menu_items = {item["name"]: item["price"] for item in self.get_menu_items()}
-        total = 0.0
-        
-        # Parse items like "Item x2, Item2 x1" or "Item, Item2"
-        items_list = [item.strip() for item in items_text.split(",")]
-        for item_str in items_list:
-            item_str = item_str.strip()
-            if " x" in item_str:
-                parts = item_str.rsplit(" x", 1)
-                item_name = parts[0].strip()
-                try:
-                    quantity = int(parts[1].strip())
-                except (ValueError, IndexError):
-                    quantity = 1
-            else:
-                item_name = item_str
-                quantity = 1
+        except Exception as e:
+            logger.error(f"Error loading orders from CSV: {e}", exc_info=True)
+    
+    def _ensure_status_column(self, path="data/orders.csv"):
+        """Ensure Status column exists in orders CSV"""
+        try:
+            exists, readable, writable = self.check_file_permissions(path)
+            if not exists or not readable or not writable:
+                return
             
-            if item_name in menu_items:
-                total += menu_items[item_name] * quantity
-        
-        return round(total, 2)
+            rows = []
+            with open(path, "r", newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                fieldnames = list(reader.fieldnames or [])
+                if "Status" not in fieldnames:
+                    fieldnames.append("Status")
+                for row in reader:
+                    if "Status" not in row:
+                        row["Status"] = "Pending"
+                    rows.append(row)
+            
+            # Write back with Status column
+            with open(path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(rows)
+            
+            logger.info(f"Added Status column to {path}")
+        except Exception as e:
+            logger.error(f"Error ensuring Status column: {e}")
 
     def add_order_to_csv(
         self,
@@ -688,18 +792,6 @@ class FoodTruck:
         customer_email,
         items_text,
         allergy_info,
-        customer_phone="",
-        order_type="delivery",
-        delivery_address="",
-        address_lat="",
-        address_lng="",
-        delivery_instructions="",
-        pickup_instructions="",
-        tip_amount=0.00,
-        delivery_fee=0.00,
-        payment_method="card",
-        masked_card="",
-        card_expiry="",
         path="data/orders.csv",
     ):
         is_safe = self.is_order_safe_for_allergy(items_text, allergy_info)
@@ -707,8 +799,6 @@ class FoodTruck:
 
         order_id = len(self.orders) + 1
         timestamp = datetime.now().isoformat(timespec="seconds")
-        subtotal = self.calculate_order_price(items_text)
-        total_price = subtotal + delivery_fee + tip_amount
 
         exists, _, writable = self.check_file_permissions(path)
         if not exists:
@@ -725,26 +815,11 @@ class FoodTruck:
                     order_id,
                     _sanitize_for_csv(customer_name),
                     _sanitize_for_csv(customer_email),
-                    _sanitize_for_csv(customer_phone),
-                    _sanitize_for_csv(order_type),
-                    _sanitize_for_csv(delivery_address),
-                    _sanitize_for_csv(address_lat),
-                    _sanitize_for_csv(address_lng),
-                    _sanitize_for_csv(delivery_instructions),
-                    _sanitize_for_csv(pickup_instructions),
                     _sanitize_for_csv(items_text),
                     _sanitize_for_csv(allergy_info),
                     is_safe_str,
                     _sanitize_for_csv(timestamp),
-                    "Pending",
-                    "",
-                    str(subtotal),
-                    str(delivery_fee),
-                    str(tip_amount),
-                    str(total_price),
-                    _sanitize_for_csv(payment_method),
-                    _sanitize_for_csv(masked_card),
-                    _sanitize_for_csv(card_expiry),
+                    "Pending",  # Default status for new orders
                 ]
             )
 
@@ -753,114 +828,15 @@ class FoodTruck:
                 "order_id": order_id,
                 "customer_name": customer_name,
                 "customer_email": customer_email,
-                "customer_phone": customer_phone,
-                "order_type": order_type,
-                "delivery_address": delivery_address,
-                "address_lat": address_lat,
-                "address_lng": address_lng,
-                "delivery_instructions": delivery_instructions,
-                "pickup_instructions": pickup_instructions,
                 "item": items_text,
                 "allergy_info": allergy_info,
                 "is_safe": is_safe_str,
                 "timestamp": timestamp,
                 "status": "Pending",
-                "completed_by": "",
-                "subtotal": str(subtotal),
-                "delivery_fee": str(delivery_fee),
-                "tip_amount": str(tip_amount),
-                "price": str(total_price),
-                "payment_method": payment_method,
-                "masked_card": masked_card,
-                "card_expiry": card_expiry,
             }
         )
 
         return is_safe
-
-    def migrate_orders_csv(self, path="data/orders.csv"):
-        """Migrate existing orders CSV to include new fields (Status, Completed_By, Price)"""
-        exists, readable, writable = self.check_file_permissions(path)
-        if not exists or not readable:
-            return
-        
-        try:
-            rows = []
-            fieldnames = []
-            needs_migration = False
-            
-            with open(path, "r", newline="") as f:
-                reader = csv.DictReader(f)
-                fieldnames = list(reader.fieldnames or [])
-                
-                # Check if migration is needed
-                if "Status" not in fieldnames or "Completed_By" not in fieldnames or "Price" not in fieldnames:
-                    needs_migration = True
-                    fieldnames.extend([col for col in ["Status", "Completed_By", "Price"] if col not in fieldnames])
-                
-                for row in reader:
-                    if needs_migration:
-                        if "Status" not in row:
-                            row["Status"] = "Pending"
-                        if "Completed_By" not in row:
-                            row["Completed_By"] = ""
-                        if "Price" not in row:
-                            # Calculate price for existing orders
-                            row["Price"] = str(self.calculate_order_price(row.get("Item", "")))
-                    rows.append(row)
-            
-            if needs_migration and writable:
-                with open(path, "w", newline="") as f:
-                    writer = csv.DictWriter(f, fieldnames=fieldnames)
-                    writer.writeheader()
-                    writer.writerows(rows)
-                logger.info(f"Migrated orders CSV: added Status, Completed_By, Price columns")
-                self.load_orders_from_csv()
-        except Exception as e:
-            logger.error(f"Error migrating orders CSV: {e}")
-
-    def update_order_status(self, order_id, status, completed_by="", path="data/orders.csv"):
-        """Update order status and completed_by in CSV"""
-        exists, readable, writable = self.check_file_permissions(path)
-        if not exists or not readable or not writable:
-            logger.error(f"Cannot update order status: {path}")
-            return False
-
-        rows = []
-        updated = False
-        with open(path, "r", newline="") as f:
-            reader = csv.DictReader(f)
-            fieldnames = reader.fieldnames or []
-            
-            # Ensure new fields exist
-            if "Status" not in fieldnames:
-                fieldnames.append("Status")
-            if "Completed_By" not in fieldnames:
-                fieldnames.append("Completed_By")
-            if "Price" not in fieldnames:
-                fieldnames.append("Price")
-            
-            for row in reader:
-                if row["Order_ID"] == str(order_id):
-                    row["Status"] = status
-                    row["Completed_By"] = completed_by
-                    if "Price" not in row:
-                        row["Price"] = str(self.calculate_order_price(row.get("Item", "")))
-                    updated = True
-                # Ensure all rows have the new fields
-                row.setdefault("Status", "Pending")
-                row.setdefault("Completed_By", "")
-                row.setdefault("Price", str(self.calculate_order_price(row.get("Item", ""))))
-                rows.append(row)
-
-        if updated:
-            with open(path, "w", newline="") as f:
-                writer = csv.DictWriter(f, fieldnames=fieldnames)
-                writer.writeheader()
-                writer.writerows(rows)
-            self.load_orders_from_csv()
-            return True
-        return False
 
     # ---------- HELPER FUNCTIONS ----------
 
@@ -881,8 +857,10 @@ class FoodTruck:
         files_config = {
             "data/users.csv": ["Email", "Password", "First_Name", "Last_Name", "Mobile_Number", "Address", "DOB", "Sex", "Role", "Verified"],
             "data/schedules.csv": ["Manager", "Date", "Time", "staff_Email", "staff_Name", "work_Time"],
-            "data/orders.csv": ["Order_ID", "Customer_Name", "Customer_Email", "Customer_Phone", "Order_Type", "Delivery_Address", "Address_Lat", "Address_Lng", "Delivery_Instructions", "Pickup_Instructions", "Item", "Allergy_Info", "Is_Safe", "Timestamp", "Status", "Completed_By", "Subtotal", "Delivery_Fee", "Tip_Amount", "Total_Price", "Payment_Method", "Masked_Card", "Card_Expiry"],
-            "data/menu.csv": ["Item_ID", "Name", "Description", "Price", "Category", "Vegan", "Image", "Allergens", "Available"],
+            "data/orders.csv": ["Order_ID", "Customer_Name", "Customer_Email", "Item", "Allergy_Info", "Is_Safe", "Timestamp", "Status"],
+            "data/deals.csv": ["Deal_ID", "Title", "Description", "Discount", "Created_By", "Created_At", "Expires_At", "Is_Active"],
+            "data/shifts.csv": ["Shift_ID", "Staff_Email", "Date", "Scheduled_Start", "Scheduled_End", "Check_In_Time", "Check_Out_Time", "Break_Start", "Break_End", "Total_Hours", "Status", "Notes", "Early_Checkout"],
+            "data/menu.csv": ["Item_ID", "Name", "Description", "Price", "Category", "Vegan", "Image", "Allergens"],
         }
 
         for file_path, headers in files_config.items():
@@ -1069,3 +1047,446 @@ class FoodTruck:
         # Refresh in-memory staff cache
         self.load_staff_from_csv()
         return True
+    
+    # ---------- DEALS MANAGEMENT ----------
+    
+    def load_deals_from_csv(self, path="data/deals.csv"):
+        """Load deals from CSV file"""
+        self.deals = []
+        try:
+            exists, readable, _ = self.check_file_permissions(path)
+            if not exists:
+                return
+            if not readable:
+                logger.error(f"Deals CSV not readable: {path}")
+                return
+
+            with open(path, newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    self.deals.append({
+                        "deal_id": row.get("Deal_ID", ""),
+                        "title": row.get("Title", ""),
+                        "description": row.get("Description", ""),
+                        "discount": row.get("Discount", ""),
+                        "created_by": row.get("Created_By", ""),
+                        "created_at": row.get("Created_At", ""),
+                        "expires_at": row.get("Expires_At", ""),
+                        "is_active": row.get("Is_Active", "YES").upper() == "YES",
+                    })
+        except FileNotFoundError:
+            pass
+        except Exception as e:
+            logger.error(f"Error loading deals from CSV: {e}", exc_info=True)
+    
+    def add_deal_to_csv(self, title, description, discount, created_by, expires_at=None, path="data/deals.csv"):
+        """Add a new deal to CSV"""
+        try:
+            exists, readable, writable = self.check_file_permissions(path)
+            if not exists:
+                # Initialize file if it doesn't exist
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                with open(path, "w", newline="", encoding="utf-8") as f:
+                    writer = csv.writer(f)
+                    writer.writerow(["Deal_ID", "Title", "Description", "Discount", "Created_By", "Created_At", "Expires_At", "Is_Active"])
+            
+            if not readable or not writable:
+                logger.error(f"Cannot access deals CSV: {path}")
+                return False
+            
+            # Generate deal ID
+            deal_id = f"DEAL_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+            created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            # Read existing deals
+            rows = []
+            with open(path, "r", newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                fieldnames = list(reader.fieldnames or [])
+                rows = list(reader)
+            
+            # Add new deal
+            new_row = {
+                "Deal_ID": deal_id,
+                "Title": _sanitize_for_csv(title),
+                "Description": _sanitize_for_csv(description),
+                "Discount": _sanitize_for_csv(discount),
+                "Created_By": _sanitize_for_csv(created_by),
+                "Created_At": created_at,
+                "Expires_At": _sanitize_for_csv(expires_at) if expires_at else "",
+                "Is_Active": "YES",
+            }
+            rows.append(new_row)
+            
+            # Write back
+            with open(path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(rows)
+            
+            # Reload deals
+            self.load_deals_from_csv()
+            logger.info(f"Deal added: {deal_id} by {created_by}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error adding deal to CSV: {e}", exc_info=True)
+            return False
+    
+    def get_active_deals(self):
+        """Get all active deals that haven't expired"""
+        self.load_deals_from_csv()
+        now = datetime.now()
+        active_deals = []
+        
+        for deal in self.deals:
+            if not deal.get("is_active", False):
+                continue
+            
+            # Check expiration
+            expires_at = deal.get("expires_at", "")
+            if expires_at:
+                try:
+                    expire_date = datetime.strptime(expires_at, "%Y-%m-%d %H:%M:%S")
+                    if expire_date < now:
+                        continue
+                except ValueError:
+                    try:
+                        expire_date = datetime.strptime(expires_at, "%Y-%m-%d")
+                        if expire_date.date() < now.date():
+                            continue
+                    except ValueError:
+                        pass
+            
+            active_deals.append(deal)
+        
+        # Sort by created_at (newest first)
+        active_deals.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+        return active_deals
+    
+    # ---------- TIME CLOCK / SHIFT MANAGEMENT ----------
+    
+    def load_shifts_from_csv(self, path="data/shifts.csv"):
+        """Load shift records from CSV"""
+        self.shifts = []
+        try:
+            exists, readable, _ = self.check_file_permissions(path)
+            if not exists:
+                return
+            if not readable:
+                logger.error(f"Shifts CSV not readable: {path}")
+                return
+
+            with open(path, newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    self.shifts.append({
+                        "shift_id": row.get("Shift_ID", ""),
+                        "staff_email": row.get("Staff_Email", ""),
+                        "date": row.get("Date", ""),
+                        "scheduled_start": row.get("Scheduled_Start", ""),
+                        "scheduled_end": row.get("Scheduled_End", ""),
+                        "check_in_time": row.get("Check_In_Time", ""),
+                        "check_out_time": row.get("Check_Out_Time", ""),
+                        "break_start": row.get("Break_Start", ""),
+                        "break_end": row.get("Break_End", ""),
+                        "total_hours": row.get("Total_Hours", "0"),
+                        "status": row.get("Status", "scheduled"),  # scheduled, checked_in, on_break, completed
+                        "notes": row.get("Notes", ""),
+                        "early_checkout": row.get("Early_Checkout", "NO").upper() == "YES",
+                    })
+        except FileNotFoundError:
+            pass
+        except Exception as e:
+            logger.error(f"Error loading shifts from CSV: {e}", exc_info=True)
+    
+    def create_shift(self, staff_email, date, scheduled_start, scheduled_end, path="data/shifts.csv"):
+        """Create a new shift for a staff member"""
+        try:
+            exists, readable, writable = self.check_file_permissions(path)
+            if not exists:
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                with open(path, "w", newline="", encoding="utf-8") as f:
+                    writer = csv.writer(f)
+                    writer.writerow(["Shift_ID", "Staff_Email", "Date", "Scheduled_Start", "Scheduled_End", "Check_In_Time", "Check_Out_Time", "Break_Start", "Break_End", "Total_Hours", "Status", "Notes", "Early_Checkout"])
+            
+            if not readable or not writable:
+                logger.error(f"Cannot access shifts CSV: {path}")
+                return False
+            
+            # Generate shift ID
+            shift_id = f"SHIFT_{datetime.now().strftime('%Y%m%d%H%M%S')}_{staff_email[:5]}"
+            
+            # Read existing shifts
+            rows = []
+            with open(path, "r", newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                fieldnames = list(reader.fieldnames or [])
+                rows = list(reader)
+            
+            # Add new shift
+            new_row = {
+                "Shift_ID": shift_id,
+                "Staff_Email": _sanitize_for_csv(staff_email),
+                "Date": _sanitize_for_csv(date),
+                "Scheduled_Start": _sanitize_for_csv(scheduled_start),
+                "Scheduled_End": _sanitize_for_csv(scheduled_end),
+                "Check_In_Time": "",
+                "Check_Out_Time": "",
+                "Break_Start": "",
+                "Break_End": "",
+                "Total_Hours": "0",
+                "Status": "scheduled",
+                "Notes": "",
+                "Early_Checkout": "NO",
+            }
+            rows.append(new_row)
+            
+            # Write back
+            with open(path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(rows)
+            
+            # Reload shifts
+            self.load_shifts_from_csv()
+            logger.info(f"Shift created: {shift_id} for {staff_email}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error creating shift: {e}", exc_info=True)
+            return False
+    
+    def update_shift_status(self, shift_id, status, check_in_time=None, check_out_time=None, break_start=None, break_end=None, notes=None, early_checkout=False, path="data/shifts.csv"):
+        """Update shift status (check in, check out, break, etc.)"""
+        try:
+            exists, readable, writable = self.check_file_permissions(path)
+            if not exists or not readable or not writable:
+                logger.error(f"Cannot access shifts CSV: {path}")
+                return False
+            
+            rows = []
+            shift_found = False
+            
+            with open(path, "r", newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                fieldnames = list(reader.fieldnames or [])
+                for row in reader:
+                    if row.get("Shift_ID", "") == shift_id:
+                        shift_found = True
+                        row["Status"] = status
+                        if check_in_time:
+                            row["Check_In_Time"] = check_in_time
+                        if check_out_time:
+                            row["Check_Out_Time"] = check_out_time
+                        if break_start:
+                            row["Break_Start"] = break_start
+                        if break_end:
+                            row["Break_End"] = break_end
+                        if notes is not None:
+                            row["Notes"] = _sanitize_for_csv(notes)
+                        if early_checkout:
+                            row["Early_Checkout"] = "YES"
+                        
+                        # Calculate total hours if we have check in and check out
+                        if row.get("Check_In_Time") and row.get("Check_Out_Time"):
+                            try:
+                                check_in = datetime.strptime(row["Check_In_Time"], "%Y-%m-%d %H:%M:%S")
+                                check_out = datetime.strptime(row["Check_Out_Time"], "%Y-%m-%d %H:%M:%S")
+                                
+                                # Subtract break time if exists
+                                break_duration = timedelta(0)
+                                if row.get("Break_Start") and row.get("Break_End"):
+                                    try:
+                                        break_start_dt = datetime.strptime(row["Break_Start"], "%Y-%m-%d %H:%M:%S")
+                                        break_end_dt = datetime.strptime(row["Break_End"], "%Y-%m-%d %H:%M:%S")
+                                        break_duration = break_end_dt - break_start_dt
+                                    except ValueError:
+                                        pass
+                                
+                                total_time = check_out - check_in - break_duration
+                                total_hours = total_time.total_seconds() / 3600
+                                row["Total_Hours"] = f"{total_hours:.2f}"
+                            except ValueError:
+                                pass
+                    
+                    rows.append(row)
+            
+            if not shift_found:
+                logger.warning(f"Shift not found: {shift_id}")
+                return False
+            
+            # Write back
+            with open(path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(rows)
+            
+            # Reload shifts
+            self.load_shifts_from_csv()
+            logger.info(f"Shift updated: {shift_id} - Status: {status}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error updating shift: {e}", exc_info=True)
+            return False
+    
+    def get_staff_shifts(self, staff_email, date_filter=None):
+        """Get all shifts for a staff member, optionally filtered by date"""
+        self.load_shifts_from_csv()
+        shifts = [s for s in self.shifts if s.get("staff_email", "").lower() == staff_email.lower()]
+        
+        if date_filter:
+            shifts = [s for s in shifts if s.get("date", "") == date_filter]
+        
+        # Sort by date and scheduled start time
+        shifts.sort(key=lambda x: (x.get("date", ""), x.get("scheduled_start", "")))
+        return shifts
+    
+    # ---------- MENU MANAGEMENT ----------
+    
+    def add_menu_item(self, name, description, price, category, vegan, image, allergens, path="data/menu.csv"):
+        """Add a new menu item"""
+        try:
+            exists, readable, writable = self.check_file_permissions(path)
+            if not exists:
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                with open(path, "w", newline="", encoding="utf-8") as f:
+                    writer = csv.writer(f)
+                    writer.writerow(["Item_ID", "Name", "Description", "Price", "Category", "Vegan", "Image", "Allergens"])
+            
+            if not readable or not writable:
+                logger.error(f"Cannot access menu CSV: {path}")
+                return False
+            
+            # Generate item ID
+            self.load_menu_from_csv()
+            existing_ids = [item.get("item_id", "") for item in self.menu_items]
+            item_id = f"MENU_{len(existing_ids) + 1:03d}"
+            
+            # Read existing items
+            rows = []
+            with open(path, "r", newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                fieldnames = list(reader.fieldnames or [])
+                rows = list(reader)
+            
+            # Add new item
+            new_row = {
+                "Item_ID": item_id,
+                "Name": _sanitize_for_csv(name),
+                "Description": _sanitize_for_csv(description),
+                "Price": str(float(price)),
+                "Category": category,
+                "Vegan": "TRUE" if vegan else "FALSE",
+                "Image": image,
+                "Allergens": ",".join([a.strip() for a in allergens if a.strip()]) if isinstance(allergens, list) else _sanitize_for_csv(allergens),
+            }
+            rows.append(new_row)
+            
+            # Write back
+            with open(path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(rows)
+            
+            # Reload menu
+            self.load_menu_from_csv()
+            logger.info(f"Menu item added: {item_id} - {name}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error adding menu item: {e}", exc_info=True)
+            return False
+    
+    def update_menu_item(self, item_id, name, description, price, category, vegan, image, allergens, path="data/menu.csv"):
+        """Update an existing menu item"""
+        try:
+            exists, readable, writable = self.check_file_permissions(path)
+            if not exists or not readable or not writable:
+                logger.error(f"Cannot access menu CSV: {path}")
+                return False
+            
+            rows = []
+            item_found = False
+            
+            with open(path, "r", newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                fieldnames = list(reader.fieldnames or [])
+                for row in reader:
+                    if row.get("Item_ID", "") == item_id:
+                        item_found = True
+                        row["Name"] = _sanitize_for_csv(name)
+                        row["Description"] = _sanitize_for_csv(description)
+                        row["Price"] = str(float(price))
+                        row["Category"] = category
+                        row["Vegan"] = "TRUE" if vegan else "FALSE"
+                        row["Image"] = image
+                        row["Allergens"] = ",".join([a.strip() for a in allergens if a.strip()]) if isinstance(allergens, list) else _sanitize_for_csv(allergens)
+                    rows.append(row)
+            
+            if not item_found:
+                logger.warning(f"Menu item not found: {item_id}")
+                return False
+            
+            # Write back
+            with open(path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(rows)
+            
+            # Reload menu
+            self.load_menu_from_csv()
+            logger.info(f"Menu item updated: {item_id} - {name}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error updating menu item: {e}", exc_info=True)
+            return False
+    
+    def delete_menu_item(self, item_id, path="data/menu.csv"):
+        """Delete a menu item"""
+        try:
+            exists, readable, writable = self.check_file_permissions(path)
+            if not exists or not readable or not writable:
+                logger.error(f"Cannot access menu CSV: {path}")
+                return False
+            
+            rows = []
+            item_found = False
+            
+            with open(path, "r", newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                fieldnames = list(reader.fieldnames or [])
+                for row in reader:
+                    if row.get("Item_ID", "") != item_id:
+                        rows.append(row)
+                    else:
+                        item_found = True
+            
+            if not item_found:
+                logger.warning(f"Menu item not found: {item_id}")
+                return False
+            
+            # Write back
+            with open(path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(rows)
+            
+            # Reload menu
+            self.load_menu_from_csv()
+            logger.info(f"Menu item deleted: {item_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error deleting menu item: {e}", exc_info=True)
+            return False
+    
+    def get_menu_item_by_id(self, item_id):
+        """Get a specific menu item by ID"""
+        self.load_menu_from_csv()
+        for item in self.menu_items:
+            if item.get("item_id") == item_id:
+                return item
+        return None

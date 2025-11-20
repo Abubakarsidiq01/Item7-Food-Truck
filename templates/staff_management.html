@@ -12,6 +12,32 @@
             <a href="{{ url_for('staff_schedule') }}#open-slots" class="button secondary">View Open Slots</a>
         </div>
     </div>
+    
+    <!-- Senior Manager Verification Section -->
+    {% if not is_senior_manager %}
+    <div class="senior-manager-section">
+        <div class="senior-manager-card">
+            <h3>🔐 Senior Manager Access</h3>
+            <p>Are you a senior manager? Enter your code to manage staff (add/remove staff members).</p>
+            <form method="POST" action="{{ url_for('verify_senior_manager') }}" class="senior-manager-form">
+                <input type="text" name="senior_manager_code" placeholder="Enter senior manager code" 
+                       required style="padding: 10px; border: 2px solid #d6001c; border-radius: 6px; width: 200px;">
+                <button type="submit" class="button">Verify</button>
+            </form>
+        </div>
+    </div>
+    {% else %}
+    <div class="senior-manager-verified">
+        <div class="verified-badge">
+            <span>✅ Senior Manager Verified</span>
+            <form method="POST" action="{{ url_for('revoke_senior_manager') }}" style="display: inline;">
+                <button type="submit" onclick="return confirm('Revoke senior manager access?');" 
+                        class="button secondary" style="padding: 5px 10px; font-size: 12px;">Revoke Access</button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+    
     <div class="panel-body">
         <form method="get" class="staff-search">
             <input type="text" name="q" value="{{ search_query }}" placeholder="Search by name, email, or phone">
@@ -26,20 +52,31 @@
                 {% for staff in staff_filtered %}
                     <div class="portal-staff-card">
                         <div class="staff-avatar">{{ staff.first[0]|upper }}</div>
-                        <div>
+                        <div style="flex: 1;">
                             <strong>{{ staff.first }} {{ staff.last }}</strong>
                             <p><a href="mailto:{{ staff.email }}">{{ staff.email }}</a></p>
                             {% if staff.phone %}
                                 <p><a href="tel:{{ staff.phone }}">{{ staff.phone }}</a></p>
                             {% endif %}
                         </div>
+                        {% if is_senior_manager %}
+                        <div class="staff-actions">
+                            <form method="POST" action="{{ url_for('remove_staff') }}" 
+                                  onsubmit="return confirm('Are you sure you want to remove {{ staff.first }} {{ staff.last }} from the staff directory? This action cannot be undone.');">
+                                <input type="hidden" name="staff_email" value="{{ staff.email }}">
+                                <button type="submit" class="remove-staff-btn" title="Remove staff member">
+                                    🗑️ Remove
+                                </button>
+                            </form>
+                        </div>
+                        {% endif %}
                     </div>
                 {% endfor %}
             </div>
         {% else %}
             <div class="panel-empty">
                 {% if search_query %}
-                    <p>No staff match “{{ search_query }}”.</p>
+                    <p>No staff match "{{ search_query }}".</p>
                 {% else %}
                     <p>No staff records found.</p>
                 {% endif %}
@@ -47,6 +84,85 @@
         {% endif %}
     </div>
 </section>
+
+<style>
+.senior-manager-section {
+    margin-bottom: 20px;
+}
+
+.senior-manager-card {
+    background: #fff3cd;
+    border: 2px solid #ffc107;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.senior-manager-card h3 {
+    margin-top: 0;
+    color: #856404;
+}
+
+.senior-manager-card p {
+    color: #856404;
+    margin-bottom: 15px;
+}
+
+.senior-manager-form {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.senior-manager-verified {
+    margin-bottom: 20px;
+}
+
+.verified-badge {
+    background: #d4edda;
+    border: 2px solid #28a745;
+    border-radius: 8px;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.verified-badge span {
+    color: #155724;
+    font-weight: 600;
+}
+
+.portal-staff-card {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    position: relative;
+}
+
+.staff-actions {
+    margin-left: auto;
+}
+
+.remove-staff-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background 0.3s;
+}
+
+.remove-staff-btn:hover {
+    background: #c82333;
+}
+
+.portal-staff-card:hover {
+    background: #f8f9fa;
+}
+</style>
 
 {% endblock %}
 
