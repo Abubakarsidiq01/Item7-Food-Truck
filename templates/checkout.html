@@ -60,7 +60,7 @@
         <!-- Delivery Location -->
         <div class="checkout-section">
             <h2>Delivery Location</h2>
-            <p class="section-hint">Click "Use My Location" or search for an address</p>
+            <p class="section-hint">We'll try to detect your location automatically, or you can click "Use My Location" or search for an address</p>
             
             <div class="location-controls">
                 <button type="button" id="getLocationBtn" class="button location-btn">
@@ -69,7 +69,7 @@
                 <input type="text" id="addressSearch" placeholder="Search address..." class="address-search">
             </div>
             <p class="location-hint" style="font-size: 12px; color: #666; margin-top: 8px;">
-                💡 Your browser will ask for location permission. Click "Allow" to use your current location.
+                💡 Your browser will ask for location permission. Click "Allow" to use your current location. You can also drag the marker on the map to adjust your delivery location.
             </p>
             
             <div id="map" style="height: 300px; width: 100%; border-radius: 8px; margin-top: 15px; position: relative; z-index: 1;"></div>
@@ -175,6 +175,14 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
         crossorigin=""></script>
+<script>
+    // Verify Leaflet loaded
+    if (typeof L === 'undefined') {
+        console.error('Leaflet library failed to load!');
+    } else {
+        console.log('Leaflet loaded successfully, version:', L.version);
+    }
+</script>
 <!-- Stripe JS -->
 <script src="https://js.stripe.com/v3/"></script>
 
@@ -185,16 +193,73 @@
     width: 100% !important;
     min-height: 300px;
     background-color: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
+    display: block !important;
+    visibility: visible !important;
 }
 
 .leaflet-container {
-    height: 100%;
-    width: 100%;
+    height: 100% !important;
+    width: 100% !important;
     z-index: 1;
+    font-family: inherit;
+    background-color: #f0f0f0;
+}
+
+.leaflet-tile-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
 }
 
 .leaflet-tile-container img {
     max-width: none !important;
+    max-height: none !important;
+    width: 256px !important;
+    height: 256px !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+.leaflet-control-container {
+    z-index: 2;
+}
+
+.leaflet-popup-content-wrapper {
+    border-radius: 8px;
+}
+
+/* Ensure map tiles load properly */
+.leaflet-tile {
+    visibility: visible !important;
+    opacity: 1 !important;
+    display: block !important;
+    pointer-events: auto !important;
+}
+
+.leaflet-tile-loaded {
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Fix for tile loading */
+.leaflet-tile-pane {
+    z-index: 2;
+}
+
+.leaflet-overlay-pane {
+    z-index: 4;
+}
+
+.leaflet-marker-pane {
+    z-index: 5;
 }
 </style>
 
@@ -243,8 +308,9 @@
     let map = null;
     let marker = null;
     let currentLocation = null;
+    let mapInitialized = false;
 
-    function initMap() {
+    function initMap(centerLat = null, centerLng = null, zoom = 13) {
         const mapContainer = document.getElementById('map');
         if (!mapContainer) {
             console.error('Map container not found');
@@ -253,9 +319,9 @@
         
         // Wait a bit to ensure container is visible and has dimensions
         setTimeout(function() {
-            // Default location (GSU Campus area)
-            const defaultLat = 33.7531;
-            const defaultLng = -84.3853;
+            // Default location (GSU Campus area) - only use if no center provided
+            const defaultLat = centerLat || 33.7531;
+            const defaultLng = centerLng || -84.3853;
             
             // Check if map already exists
             if (map) {
@@ -269,39 +335,102 @@
             // Ensure container has dimensions
             if (mapContainer.offsetHeight === 0 || mapContainer.offsetWidth === 0) {
                 console.warn('Map container has no dimensions, retrying...');
-                setTimeout(initMap, 300);
+                setTimeout(function() { initMap(centerLat, centerLng, zoom); }, 300);
                 return;
             }
             
             try {
                 map = L.map('map', {
                     center: [defaultLat, defaultLng],
-                    zoom: 13,
+                    zoom: zoom,
                     zoomControl: true,
-                    preferCanvas: false
+                    preferCanvas: false,
+                    worldCopyJump: false
                 });
                 
-                // Add tile layer with error handling
-                const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{s}/{z}/{x}/{y}.png', {
-                    attribution: '© OpenStreetMap contributors',
+                // Use OpenStreetMap tiles with proper configuration
+                const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
                     maxZoom: 19,
-                    errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+                    subdomains: ['a', 'b', 'c'],
+                    tileSize: 256,
+                    zoomOffset: 0,
+                    crossOrigin: true
                 });
                 
+                // Add tile layer
                 tileLayer.addTo(map);
+                
+                // Monitor tile loading
+                let tilesLoaded = 0;
+                let tilesError = 0;
+                
+                tileLayer.on('tileload', function() {
+                    tilesLoaded++;
+                    if (tilesLoaded === 1) {
+                        console.log('Map tiles loading successfully');
+                    }
+                });
+                
+                tileLayer.on('tileerror', function(error, tile) {
+                    tilesError++;
+                    console.warn('Tile load error:', error, tile);
+                    // If too many errors, try alternative provider
+                    if (tilesError > 3 && tilesLoaded === 0) {
+                        console.log('Too many tile errors, trying alternative provider...');
+                        map.removeLayer(tileLayer);
+                        const altTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                            maxZoom: 19,
+                            subdomains: 'abcd'
+                        });
+                        altTileLayer.addTo(map);
+                    }
+                });
+                
+                // Force tile refresh and ensure visibility
+                setTimeout(function() {
+                    if (map) {
+                        map.invalidateSize();
+                        // Force a tile refresh
+                        map.eachLayer(function(layer) {
+                            if (layer instanceof L.TileLayer) {
+                                layer.redraw();
+                            }
+                        });
+                        // Ensure map container is visible
+                        const mapEl = document.getElementById('map');
+                        if (mapEl) {
+                            mapEl.style.display = 'block';
+                            mapEl.style.visibility = 'visible';
+                        }
+                    }
+                }, 200);
                 
                 // Invalidate size multiple times to ensure rendering
                 setTimeout(function() {
                     if (map) {
                         map.invalidateSize();
                     }
-                }, 100);
+                }, 500);
+                
+                setTimeout(function() {
+                    if (map) {
+                        map.invalidateSize();
+                        // Force tile reload
+                        map.eachLayer(function(layer) {
+                            if (layer instanceof L.TileLayer) {
+                                layer.redraw();
+                            }
+                        });
+                    }
+                }, 1000);
                 
                 setTimeout(function() {
                     if (map) {
                         map.invalidateSize();
                     }
-                }, 500);
+                }, 2000);
 
                 // Add marker
                 marker = L.marker([defaultLat, defaultLng], {draggable: true}).addTo(map);
@@ -319,7 +448,23 @@
                 // Update location on initial load
                 updateLocation(defaultLat, defaultLng);
                 
-                console.log('Map initialized successfully');
+                mapInitialized = true;
+                console.log('Map initialized successfully at:', defaultLat, defaultLng);
+                
+                // Final check to ensure tiles are visible
+                setTimeout(function() {
+                    if (map) {
+                        const bounds = map.getBounds();
+                        console.log('Map bounds:', bounds);
+                        // Force one more refresh
+                        map.invalidateSize();
+                        map.eachLayer(function(layer) {
+                            if (layer instanceof L.TileLayer) {
+                                layer.redraw();
+                            }
+                        });
+                    }
+                }, 1500);
             } catch(error) {
                 console.error('Error initializing map:', error);
             }
@@ -342,22 +487,25 @@
             });
     }
 
-    // Get user location
-    document.getElementById('getLocationBtn').addEventListener('click', function() {
-        const btn = this;
-        
+    // Function to get and set user location
+    function getUserLocation(autoRequest = false) {
         if (!navigator.geolocation) {
-            alert('Geolocation is not supported by your browser. Please use the address search instead.');
+            if (!autoRequest) {
+                alert('Geolocation is not supported by your browser. Please use the address search instead.');
+            }
             return;
         }
         
-        btn.textContent = '📍 Getting location...';
-        btn.disabled = true;
+        const btn = document.getElementById('getLocationBtn');
+        if (btn && !autoRequest) {
+            btn.textContent = '📍 Getting location...';
+            btn.disabled = true;
+        }
         
         // Request location with options for better accuracy
         const options = {
             enableHighAccuracy: true,
-            timeout: 10000,
+            timeout: 15000,
             maximumAge: 0
         };
         
@@ -367,19 +515,22 @@
                 const lng = position.coords.longitude;
                 
                 console.log('Location obtained:', lat, lng);
+                currentLocation = { lat: lat, lng: lng };
                 
                 // Ensure map is initialized
-                if (!map) {
-                    initMap();
+                if (!mapInitialized || !map) {
+                    initMap(lat, lng, 15);
                     setTimeout(function() {
-                        map.setView([lat, lng], 15);
-                        if (marker) {
-                            marker.setLatLng([lat, lng]);
-                        } else {
-                            marker = L.marker([lat, lng], {draggable: true}).addTo(map);
+                        if (map) {
+                            map.setView([lat, lng], 15);
+                            if (marker) {
+                                marker.setLatLng([lat, lng]);
+                            } else {
+                                marker = L.marker([lat, lng], {draggable: true}).addTo(map);
+                            }
+                            updateLocation(lat, lng);
                         }
-                        updateLocation(lat, lng);
-                    }, 500);
+                    }, 800);
                 } else {
                     map.setView([lat, lng], 15);
                     if (marker) {
@@ -390,8 +541,10 @@
                     updateLocation(lat, lng);
                 }
                 
-                btn.textContent = '📍 Use My Location';
-                btn.disabled = false;
+                if (btn) {
+                    btn.textContent = '📍 Use My Location';
+                    btn.disabled = false;
+                }
             },
             function(error) {
                 let errorMessage = 'Could not get your location. ';
@@ -411,28 +564,54 @@
                         break;
                 }
                 
-                alert(errorMessage);
+                if (!autoRequest) {
+                    alert(errorMessage);
+                }
                 console.error('Geolocation error:', error);
-                btn.textContent = '📍 Use My Location';
-                btn.disabled = false;
+                
+                // Initialize map with default location if auto-request failed
+                if (autoRequest && !mapInitialized) {
+                    initMap();
+                }
+                
+                if (btn) {
+                    btn.textContent = '📍 Use My Location';
+                    btn.disabled = false;
+                }
             },
             options
         );
+    }
+    
+    // Get user location button click handler
+    document.getElementById('getLocationBtn').addEventListener('click', function() {
+        getUserLocation(false);
     });
     
-    // Try to request location permission on page load (optional, some browsers allow this)
-    if (navigator.geolocation && navigator.permissions) {
-        navigator.permissions.query({name: 'geolocation'}).then(function(result) {
-            console.log('Geolocation permission status:', result.state);
-            if (result.state === 'granted') {
-                // Permission already granted, could auto-get location if desired
-                console.log('Location permission already granted');
-            } else if (result.state === 'prompt') {
-                console.log('Location permission will be requested when button is clicked');
-            }
-        }).catch(function(err) {
-            console.log('Permission query not supported:', err);
-        });
+    // Try to automatically get user location on page load
+    if (navigator.geolocation) {
+        if (navigator.permissions) {
+            navigator.permissions.query({name: 'geolocation'}).then(function(result) {
+                console.log('Geolocation permission status:', result.state);
+                if (result.state === 'granted') {
+                    // Permission already granted, auto-get location
+                    console.log('Location permission already granted, getting location...');
+                    getUserLocation(true);
+                } else if (result.state === 'prompt') {
+                    // Try to request location automatically
+                    console.log('Requesting location permission...');
+                    getUserLocation(true);
+                }
+            }).catch(function(err) {
+                console.log('Permission query not supported, trying to get location anyway:', err);
+                // Try anyway - browser will prompt
+                getUserLocation(true);
+            });
+        } else {
+            // Permissions API not supported, try to get location anyway
+            console.log('Permissions API not supported, trying to get location...');
+            getUserLocation(true);
+        }
     }
 
     // Address search
@@ -548,23 +727,61 @@
         // If cash, form submits normally
     });
 
-    // Initialize map on page load
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(initMap, 100);
-        });
-    } else {
-        // DOM already loaded
-        setTimeout(initMap, 100);
+    // Wait for Leaflet to be fully loaded
+    function waitForLeaflet(callback, maxAttempts = 10) {
+        let attempts = 0;
+        const checkLeaflet = setInterval(function() {
+            attempts++;
+            if (typeof L !== 'undefined' && L.map) {
+                clearInterval(checkLeaflet);
+                console.log('Leaflet is ready');
+                callback();
+            } else if (attempts >= maxAttempts) {
+                clearInterval(checkLeaflet);
+                console.error('Leaflet failed to load after', maxAttempts, 'attempts');
+                callback(); // Try anyway
+            }
+        }, 100);
     }
     
-    // Also try initializing after a longer delay as fallback
-    setTimeout(function() {
-        if (!map || !map.getContainer() || map.getContainer().offsetHeight === 0) {
-            console.log('Retrying map initialization...');
-            initMap();
+    // Initialize map on page load (with delay to allow location to be obtained first)
+    waitForLeaflet(function() {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                // Wait a bit for location request, then initialize map if location not obtained
+                setTimeout(function() {
+                    if (!mapInitialized) {
+                        initMap();
+                    }
+                }, 1500);
+            });
+        } else {
+            // DOM already loaded - wait for location request
+            setTimeout(function() {
+                if (!mapInitialized) {
+                    initMap();
+                }
+            }, 1500);
         }
-    }, 1000);
+        
+        // Also try initializing after a longer delay as fallback
+        setTimeout(function() {
+            if (!mapInitialized || !map || !map.getContainer() || map.getContainer().offsetHeight === 0) {
+                console.log('Retrying map initialization...');
+                if (!mapInitialized) {
+                    initMap();
+                } else if (map) {
+                    map.invalidateSize();
+                    // Force tile reload
+                    map.eachLayer(function(layer) {
+                        if (layer instanceof L.TileLayer) {
+                            layer.redraw();
+                        }
+                    });
+                }
+            }
+        }, 3000);
+    });
 
     // Tip calculation (subtotal already includes tax)
     const subtotal = {{ subtotal }};

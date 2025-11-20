@@ -34,13 +34,13 @@ STRIPE_DEMO_MODE = not STRIPE_ENABLED
 
 if STRIPE_ENABLED:
     stripe.api_key = STRIPE_SECRET_KEY
-    print("✅ Stripe enabled with real keys")
+    print("[OK] Stripe enabled with real keys")
 elif STRIPE_DEMO_MODE:
     # Use a valid-looking test key format for demo mode (Stripe.js needs valid format)
     # This key format is accepted by Stripe.js for initialization but won't work for real payments
     STRIPE_PUBLISHABLE_KEY = "pk_test_51DemoMode00000000000000000000000000000000000000000000000000000000000000000000"
     stripe.api_key = None  # No real API calls in demo mode
-    print("🎮 Stripe DEMO MODE enabled - payments will be simulated (no real charges)")
+    print("[DEMO] Stripe DEMO MODE enabled - payments will be simulated (no real charges)")
 else:
     stripe.api_key = None
 
