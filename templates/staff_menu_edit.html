@@ -1,0 +1,141 @@
+{% extends "staff_layout.html" %}
+{% block staff_content %}
+
+<section class="panel-card">
+    <div class="panel-header">
+        <div>
+            <h2>✏️ Edit Menu Item</h2>
+            <p class="portal-note">Update menu item details and image</p>
+        </div>
+    </div>
+    
+    <div class="panel-body">
+        <form action="{{ url_for('edit_menu_item', item_id=item.item_id) }}" method="POST" enctype="multipart/form-data" class="menu-form">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div>
+                    <label for="name">Item Name *</label>
+                    <input type="text" id="name" name="name" value="{{ item.name }}" required>
+                </div>
+                <div>
+                    <label for="price">Price ($) *</label>
+                    <input type="number" id="price" name="price" step="0.01" min="0" value="{{ item.price }}" required>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label for="description">Description *</label>
+                <textarea id="description" name="description" rows="3" required>{{ item.description }}</textarea>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div>
+                    <label for="category">Category *</label>
+                    <select id="category" name="category" required>
+                        <option value="Combo" {% if item.category == "Combo" %}selected{% endif %}>Combo</option>
+                        <option value="Main" {% if item.category == "Main" %}selected{% endif %}>Main</option>
+                        <option value="Veg" {% if item.category == "Veg" %}selected{% endif %}>Vegetarian/Vegan</option>
+                        <option value="Side" {% if item.category == "Side" %}selected{% endif %}>Side</option>
+                        <option value="Drink" {% if item.category == "Drink" %}selected{% endif %}>Drink</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="vegan">Vegan?</label>
+                    <select id="vegan" name="vegan">
+                        <option value="false" {% if not item.vegan %}selected{% endif %}>No</option>
+                        <option value="true" {% if item.vegan %}selected{% endif %}>Yes</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="allergens">Allergens (comma-separated)</label>
+                    <input type="text" id="allergens" name="allergens" value="{{ item.allergens|join(', ') if item.allergens else '' }}">
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label>Current Image</label>
+                <div style="margin: 12px 0;">
+                    {% if item.image and item.image != "burger.svg" %}
+                    <div style="position: relative; display: inline-block;">
+                        <img src="{{ url_for('static', filename='images/' + item.image) }}" 
+                             alt="{{ item.name }}" 
+                             style="max-width: 200px; max-height: 200px; border-radius: 8px; border: 2px solid #e0e0e0;">
+                    </div>
+                    {% else %}
+                    <p style="color: #666;">No image (using default)</p>
+                    {% endif %}
+                </div>
+                
+                {% if item.image and item.image != "burger.svg" %}
+                <div style="margin-bottom: 12px; padding: 12px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                        <input type="checkbox" id="remove_image" name="remove_image" value="1" style="width: auto; margin: 0;">
+                        <span style="color: #856404; font-weight: 600;">🗑️ Remove current image</span>
+                    </label>
+                    <small style="color: #856404; display: block; margin-top: 4px; margin-left: 24px;">Check this to delete the current image. You can upload a new one below.</small>
+                </div>
+                {% endif %}
+                
+                <label for="image">Upload New Image (optional)</label>
+                <input type="file" id="image" name="image" accept="image/*">
+                <small style="color: #666; display: block; margin-top: 4px;">
+                    {% if item.image and item.image != "burger.svg" %}
+                    Upload a new image to replace the current one, or check "Remove current image" above to delete it.
+                    {% else %}
+                    Upload an image for this item.
+                    {% endif %}
+                </small>
+            </div>
+            
+            <div class="form-actions" style="display: flex; gap: 12px;">
+                <button type="submit" class="button" style="background: #4CAF50;">
+                    💾 Save Changes
+                </button>
+                <a href="{{ url_for('manage_menu') }}" class="button" style="background: #6c757d; text-decoration: none; display: inline-block;">
+                    ← Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</section>
+
+<style>
+.menu-form label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    color: #333;
+    font-size: 14px;
+}
+
+.menu-form input[type="text"],
+.menu-form input[type="number"],
+.menu-form input[type="file"],
+.menu-form textarea,
+.menu-form select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    box-sizing: border-box;
+    transition: border-color 0.2s;
+}
+
+.menu-form input:focus,
+.menu-form textarea:focus,
+.menu-form select:focus {
+    outline: none;
+    border-color: #2196F3;
+}
+
+.menu-form input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+    cursor: pointer;
+    transform: scale(1.2);
+}
+</style>
+
+{% endblock %}
+

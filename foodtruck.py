@@ -64,15 +64,77 @@ class FoodTruck:
         self.orders = []
         self.deals = []
         self.shifts = []
+        self.menu_items = []
 
     # ---------- MENU DATA ----------
 
-    def get_menu_items(self):
-        """
-        Returns a list of menu items with details.
-        Each item has: name, description, price, category, vegan flag, image, allergens.
-        Image files live in static/images.
-        """
+    def load_menu_from_csv(self, path="data/menu.csv"):
+        """Load menu items from CSV"""
+        self.menu_items = []
+        try:
+            exists, readable, _ = self.check_file_permissions(path)
+            if not exists:
+                # If menu.csv doesn't exist, migrate from hardcoded items
+                self._migrate_menu_to_csv()
+                return
+            if not readable:
+                logger.error(f"Menu CSV not readable: {path}")
+                return
+
+            with open(path, newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    allergens_str = row.get("Allergens", "").strip()
+                    allergens = [a.strip() for a in allergens_str.split(",") if a.strip()] if allergens_str else []
+                    
+                    self.menu_items.append({
+                        "item_id": row.get("Item_ID", ""),
+                        "name": row.get("Name", ""),
+                        "description": row.get("Description", ""),
+                        "price": float(row.get("Price", "0")),
+                        "category": row.get("Category", "Other"),
+                        "vegan": row.get("Vegan", "False").upper() == "TRUE",
+                        "image": row.get("Image", "burger.svg"),
+                        "allergens": allergens,
+                    })
+        except FileNotFoundError:
+            self._migrate_menu_to_csv()
+        except Exception as e:
+            logger.error(f"Error loading menu from CSV: {e}", exc_info=True)
+            # Fallback to hardcoded items
+            self.menu_items = self._get_hardcoded_menu_items()
+
+    def _migrate_menu_to_csv(self, path="data/menu.csv"):
+        """Migrate hardcoded menu items to CSV"""
+        try:
+            hardcoded_items = self._get_hardcoded_menu_items()
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            
+            with open(path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=["Item_ID", "Name", "Description", "Price", "Category", "Vegan", "Image", "Allergens"])
+                writer.writeheader()
+                
+                for idx, item in enumerate(hardcoded_items, 1):
+                    item_id = f"MENU_{idx:03d}"
+                    writer.writerow({
+                        "Item_ID": item_id,
+                        "Name": _sanitize_for_csv(item["name"]),
+                        "Description": _sanitize_for_csv(item["description"]),
+                        "Price": str(item["price"]),
+                        "Category": item["category"],
+                        "Vegan": "TRUE" if item["vegan"] else "FALSE",
+                        "Image": item["image"],
+                        "Allergens": ",".join(item["allergens"]),
+                    })
+            
+            logger.info(f"Migrated {len(hardcoded_items)} menu items to {path}")
+            self.load_menu_from_csv(path)
+        except Exception as e:
+            logger.error(f"Error migrating menu to CSV: {e}", exc_info=True)
+            self.menu_items = self._get_hardcoded_menu_items()
+
+    def _get_hardcoded_menu_items(self):
+        """Returns the original hardcoded menu items"""
         return [
             # Combo Meals
             {
@@ -287,6 +349,29 @@ class FoodTruck:
                 "allergens": ["dairy"],
             },
         ]
+
+    def get_menu_items(self):
+        """
+        Returns a list of menu items with details.
+        Loads from CSV if available, otherwise returns hardcoded items.
+        """
+        if not self.menu_items:
+            self.load_menu_from_csv()
+        
+        # Convert to format expected by templates (without item_id for backward compatibility)
+        result = []
+        for item in self.menu_items:
+            result.append({
+                "name": item["name"],
+                "description": item["description"],
+                "price": item["price"],
+                "category": item["category"],
+                "vegan": item["vegan"],
+                "image": item["image"],
+                "allergens": item["allergens"],
+                "item_id": item.get("item_id", ""),  # Include for management
+            })
+        return result
 
     def get_menu_allergens(self):
         """
@@ -775,6 +860,7 @@ class FoodTruck:
             "data/orders.csv": ["Order_ID", "Customer_Name", "Customer_Email", "Item", "Allergy_Info", "Is_Safe", "Timestamp", "Status"],
             "data/deals.csv": ["Deal_ID", "Title", "Description", "Discount", "Created_By", "Created_At", "Expires_At", "Is_Active"],
             "data/shifts.csv": ["Shift_ID", "Staff_Email", "Date", "Scheduled_Start", "Scheduled_End", "Check_In_Time", "Check_Out_Time", "Break_Start", "Break_End", "Total_Hours", "Status", "Notes", "Early_Checkout"],
+            "data/menu.csv": ["Item_ID", "Name", "Description", "Price", "Category", "Vegan", "Image", "Allergens"],
         }
 
         for file_path, headers in files_config.items():
@@ -1256,3 +1342,151 @@ class FoodTruck:
         # Sort by date and scheduled start time
         shifts.sort(key=lambda x: (x.get("date", ""), x.get("scheduled_start", "")))
         return shifts
+    
+    # ---------- MENU MANAGEMENT ----------
+    
+    def add_menu_item(self, name, description, price, category, vegan, image, allergens, path="data/menu.csv"):
+        """Add a new menu item"""
+        try:
+            exists, readable, writable = self.check_file_permissions(path)
+            if not exists:
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                with open(path, "w", newline="", encoding="utf-8") as f:
+                    writer = csv.writer(f)
+                    writer.writerow(["Item_ID", "Name", "Description", "Price", "Category", "Vegan", "Image", "Allergens"])
+            
+            if not readable or not writable:
+                logger.error(f"Cannot access menu CSV: {path}")
+                return False
+            
+            # Generate item ID
+            self.load_menu_from_csv()
+            existing_ids = [item.get("item_id", "") for item in self.menu_items]
+            item_id = f"MENU_{len(existing_ids) + 1:03d}"
+            
+            # Read existing items
+            rows = []
+            with open(path, "r", newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                fieldnames = list(reader.fieldnames or [])
+                rows = list(reader)
+            
+            # Add new item
+            new_row = {
+                "Item_ID": item_id,
+                "Name": _sanitize_for_csv(name),
+                "Description": _sanitize_for_csv(description),
+                "Price": str(float(price)),
+                "Category": category,
+                "Vegan": "TRUE" if vegan else "FALSE",
+                "Image": image,
+                "Allergens": ",".join([a.strip() for a in allergens if a.strip()]) if isinstance(allergens, list) else _sanitize_for_csv(allergens),
+            }
+            rows.append(new_row)
+            
+            # Write back
+            with open(path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(rows)
+            
+            # Reload menu
+            self.load_menu_from_csv()
+            logger.info(f"Menu item added: {item_id} - {name}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error adding menu item: {e}", exc_info=True)
+            return False
+    
+    def update_menu_item(self, item_id, name, description, price, category, vegan, image, allergens, path="data/menu.csv"):
+        """Update an existing menu item"""
+        try:
+            exists, readable, writable = self.check_file_permissions(path)
+            if not exists or not readable or not writable:
+                logger.error(f"Cannot access menu CSV: {path}")
+                return False
+            
+            rows = []
+            item_found = False
+            
+            with open(path, "r", newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                fieldnames = list(reader.fieldnames or [])
+                for row in reader:
+                    if row.get("Item_ID", "") == item_id:
+                        item_found = True
+                        row["Name"] = _sanitize_for_csv(name)
+                        row["Description"] = _sanitize_for_csv(description)
+                        row["Price"] = str(float(price))
+                        row["Category"] = category
+                        row["Vegan"] = "TRUE" if vegan else "FALSE"
+                        row["Image"] = image
+                        row["Allergens"] = ",".join([a.strip() for a in allergens if a.strip()]) if isinstance(allergens, list) else _sanitize_for_csv(allergens)
+                    rows.append(row)
+            
+            if not item_found:
+                logger.warning(f"Menu item not found: {item_id}")
+                return False
+            
+            # Write back
+            with open(path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(rows)
+            
+            # Reload menu
+            self.load_menu_from_csv()
+            logger.info(f"Menu item updated: {item_id} - {name}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error updating menu item: {e}", exc_info=True)
+            return False
+    
+    def delete_menu_item(self, item_id, path="data/menu.csv"):
+        """Delete a menu item"""
+        try:
+            exists, readable, writable = self.check_file_permissions(path)
+            if not exists or not readable or not writable:
+                logger.error(f"Cannot access menu CSV: {path}")
+                return False
+            
+            rows = []
+            item_found = False
+            
+            with open(path, "r", newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                fieldnames = list(reader.fieldnames or [])
+                for row in reader:
+                    if row.get("Item_ID", "") != item_id:
+                        rows.append(row)
+                    else:
+                        item_found = True
+            
+            if not item_found:
+                logger.warning(f"Menu item not found: {item_id}")
+                return False
+            
+            # Write back
+            with open(path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(rows)
+            
+            # Reload menu
+            self.load_menu_from_csv()
+            logger.info(f"Menu item deleted: {item_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error deleting menu item: {e}", exc_info=True)
+            return False
+    
+    def get_menu_item_by_id(self, item_id):
+        """Get a specific menu item by ID"""
+        self.load_menu_from_csv()
+        for item in self.menu_items:
+            if item.get("item_id") == item_id:
+                return item
+        return None

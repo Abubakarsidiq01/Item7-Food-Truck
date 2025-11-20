@@ -76,6 +76,9 @@ try:
     # Load shifts if method exists (it's defined in foodtruck.py)
     if hasattr(my_truck, 'load_shifts_from_csv'):
         my_truck.load_shifts_from_csv()
+    # Load menu items
+    if hasattr(my_truck, 'load_menu_from_csv'):
+        my_truck.load_menu_from_csv()
     logger.info("CSV files initialized and loaded successfully")
 except Exception as e:
     logger.error(f"Error initializing CSV files: {e}", exc_info=True)
@@ -151,8 +154,14 @@ def inject_globals():
 
 @app.route("/")
 def home():
-    featured_items = my_truck.get_menu_items()[:4]
+    # Ensure menu is loaded
+    if hasattr(my_truck, 'load_menu_from_csv'):
+        my_truck.load_menu_from_csv()
+    
+    menu_items = my_truck.get_menu_items()
+    featured_items = menu_items[:4] if menu_items else []
     active_deals = my_truck.get_active_deals()
+    
     return render_template(
         "home.html",
         featured_items=featured_items,
@@ -240,15 +249,15 @@ def build_staff_portal_context():
         for i in range(7):
             day = today + timedelta(days=i)
             label = day.strftime("%A")
-        shifts = []
-        for s in user_schedules:
-            try:
-                dt = s.get("datetime")
-                if dt and dt != datetime.max:
-                    if dt.date() == day:
-                        shifts.append(s)
-            except (AttributeError, TypeError):
-                continue
+            shifts = []
+            for s in user_schedules:
+                try:
+                    dt = s.get("datetime")
+                    if dt and dt != datetime.max:
+                        if dt.date() == day:
+                            shifts.append(s)
+                except (AttributeError, TypeError):
+                    continue
             week_overview.append(
                 {
                     "date": day,
@@ -538,6 +547,229 @@ def create_deal():
         flash("Error creating deal. Please try again.", "error")
     
     return redirect(url_for("manage_deals"))
+
+
+# ---------- MENU MANAGEMENT ----------
+
+@app.route("/staff/menu", methods=["GET"])
+def manage_menu():
+    """Page for staff to manage menu items"""
+    access_redirect = require_staff_access()
+    if access_redirect:
+        return access_redirect
+    
+    my_truck.load_menu_from_csv()
+    menu_items = my_truck.get_menu_items()
+    
+    # Group by category
+    categories = {}
+    for item in menu_items:
+        cat = item.get("category", "Other")
+        if cat not in categories:
+            categories[cat] = []
+        categories[cat].append(item)
+    
+    context = build_staff_portal_context()
+    context.update({
+        "menu_items": menu_items,
+        "categories": categories,
+        "active_tab": "menu",
+    })
+    
+    return render_template("staff_menu.html", **context)
+
+
+@app.route("/staff/menu/add", methods=["POST"])
+def add_menu_item():
+    """Add a new menu item"""
+    access_redirect = require_staff_access()
+    if access_redirect:
+        return access_redirect
+    
+    try:
+        name = request.form.get("name", "").strip()
+        description = request.form.get("description", "").strip()
+        price = request.form.get("price", "0").strip()
+        category = request.form.get("category", "Other").strip()
+        vegan = request.form.get("vegan", "").lower() == "true"
+        allergens_str = request.form.get("allergens", "").strip()
+        allergens = [a.strip() for a in allergens_str.split(",") if a.strip()] if allergens_str else []
+        
+        # Handle image upload
+        image_filename = "burger.svg"  # Default
+        if "image" in request.files:
+            file = request.files["image"]
+            if file and file.filename:
+                # Save uploaded file
+                filename = file.filename
+                # Sanitize filename
+                import re
+                filename = re.sub(r'[^a-zA-Z0-9._-]', '_', filename)
+                # Ensure unique filename
+                from datetime import datetime
+                timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+                filename = f"{timestamp}_{filename}"
+                
+                upload_path = os.path.join("static", "images", "menu", filename)
+                os.makedirs(os.path.dirname(upload_path), exist_ok=True)
+                file.save(upload_path)
+                image_filename = f"menu/{filename}"
+        
+        # Validate inputs
+        if not name:
+            flash("Item name is required.", "error")
+            return redirect(url_for("manage_menu"))
+        
+        try:
+            price_float = float(price)
+            if price_float <= 0:
+                raise ValueError("Price must be positive")
+        except ValueError:
+            flash("Invalid price. Please enter a valid number.", "error")
+            return redirect(url_for("manage_menu"))
+        
+        success = my_truck.add_menu_item(name, description, price_float, category, vegan, image_filename, allergens)
+        
+        if success:
+            flash(f"✅ Menu item '{name}' added successfully!", "success")
+            logger.info(f"Menu item added: {name} by {session.get('user_email')}")
+        else:
+            flash("Error adding menu item. Please try again.", "error")
+        
+    except Exception as e:
+        logger.error(f"Error in add_menu_item: {e}", exc_info=True)
+        flash("An error occurred. Please try again.", "error")
+    
+    return redirect(url_for("manage_menu"))
+
+
+@app.route("/staff/menu/edit/<item_id>", methods=["GET", "POST"])
+def edit_menu_item(item_id):
+    """Edit an existing menu item"""
+    access_redirect = require_staff_access()
+    if access_redirect:
+        return access_redirect
+    
+    if request.method == "POST":
+        try:
+            name = request.form.get("name", "").strip()
+            description = request.form.get("description", "").strip()
+            price = request.form.get("price", "0").strip()
+            category = request.form.get("category", "Other").strip()
+            vegan = request.form.get("vegan", "").lower() == "true"
+            allergens_str = request.form.get("allergens", "").strip()
+            allergens = [a.strip() for a in allergens_str.split(",") if a.strip()] if allergens_str else []
+            
+            # Get existing item to preserve image if not uploaded
+            existing_item = my_truck.get_menu_item_by_id(item_id)
+            image_filename = existing_item.get("image", "burger.svg") if existing_item else "burger.svg"
+            
+            # Check if user wants to remove the current image
+            remove_image = request.form.get("remove_image", "").strip() == "1"
+            
+            if remove_image:
+                # User wants to remove the current image
+                # Delete the physical file if it exists and is an uploaded file (in menu/ folder)
+                if image_filename and image_filename.startswith("menu/"):
+                    try:
+                        image_path = os.path.join("static", "images", image_filename)
+                        if os.path.exists(image_path):
+                            os.remove(image_path)
+                            logger.info(f"Deleted image file: {image_path}")
+                    except Exception as e:
+                        logger.warning(f"Could not delete image file {image_path}: {e}")
+                
+                # Set to default image based on category
+                if category.lower() == "drink":
+                    image_filename = "drink.svg"
+                elif category.lower() in ["side", "veg"]:
+                    image_filename = "fries.svg" if category.lower() == "side" else "veggie.svg"
+                else:
+                    image_filename = "burger.svg"
+            
+            # Handle image upload if provided (this will override the remove_image action)
+            if "image" in request.files:
+                file = request.files["image"]
+                if file and file.filename:
+                    # Save uploaded file
+                    filename = file.filename
+                    import re
+                    filename = re.sub(r'[^a-zA-Z0-9._-]', '_', filename)
+                    from datetime import datetime
+                    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+                    filename = f"{timestamp}_{filename}"
+                    
+                    upload_path = os.path.join("static", "images", "menu", filename)
+                    os.makedirs(os.path.dirname(upload_path), exist_ok=True)
+                    file.save(upload_path)
+                    image_filename = f"menu/{filename}"
+            
+            # Validate inputs
+            if not name:
+                flash("Item name is required.", "error")
+                return redirect(url_for("manage_menu"))
+            
+            try:
+                price_float = float(price)
+                if price_float <= 0:
+                    raise ValueError("Price must be positive")
+            except ValueError:
+                flash("Invalid price. Please enter a valid number.", "error")
+                return redirect(url_for("manage_menu"))
+            
+            success = my_truck.update_menu_item(item_id, name, description, price_float, category, vegan, image_filename, allergens)
+            
+            if success:
+                flash(f"✅ Menu item '{name}' updated successfully!", "success")
+                logger.info(f"Menu item updated: {item_id} - {name} by {session.get('user_email')}")
+            else:
+                flash("Error updating menu item. Please try again.", "error")
+            
+        except Exception as e:
+            logger.error(f"Error in edit_menu_item: {e}", exc_info=True)
+            flash("An error occurred. Please try again.", "error")
+        
+        return redirect(url_for("manage_menu"))
+    
+    # GET request - show edit form
+    item = my_truck.get_menu_item_by_id(item_id)
+    if not item:
+        flash("Menu item not found.", "error")
+        return redirect(url_for("manage_menu"))
+    
+    context = build_staff_portal_context()
+    context.update({
+        "item": item,
+        "active_tab": "menu",
+    })
+    
+    return render_template("staff_menu_edit.html", **context)
+
+
+@app.route("/staff/menu/delete/<item_id>", methods=["POST"])
+def delete_menu_item(item_id):
+    """Delete a menu item"""
+    access_redirect = require_staff_access()
+    if access_redirect:
+        return access_redirect
+    
+    try:
+        item = my_truck.get_menu_item_by_id(item_id)
+        item_name = item.get("name", "Unknown") if item else "Unknown"
+        
+        success = my_truck.delete_menu_item(item_id)
+        
+        if success:
+            flash(f"✅ Menu item '{item_name}' deleted successfully!", "success")
+            logger.info(f"Menu item deleted: {item_id} - {item_name} by {session.get('user_email')}")
+        else:
+            flash("Error deleting menu item. Please try again.", "error")
+        
+    except Exception as e:
+        logger.error(f"Error in delete_menu_item: {e}", exc_info=True)
+        flash("An error occurred. Please try again.", "error")
+    
+    return redirect(url_for("manage_menu"))
 
 
 @app.route("/staff/statistics")

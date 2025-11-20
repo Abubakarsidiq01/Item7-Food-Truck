@@ -35,31 +35,38 @@
     </div>
 
     <div class="menu-grid">
-        {% for item in featured_items %}
-        <div class="menu-card">
-            <img src="{{ url_for('static', filename='images/' ~ item.image) }}" alt="{{ item.name }}">
-            <h3>{{ item.name }}</h3>
-            <p class="menu-meta">
-                {{ item.category }}{% if item.vegan %} · Vegan{% endif %}
-            </p>
-            <p>{{ item.description }}</p>
-            <div class="menu-tags">
-                {% if item.category == "Non-Veg" %}
-                    <span class="menu-tag">Crispy</span>
-                {% endif %}
-                {% if item.vegan %}
-                    <span class="menu-tag">Plant-Based</span>
-                {% endif %}
+        {% if featured_items %}
+            {% for item in featured_items %}
+            <div class="menu-card">
+                <img src="{{ url_for('static', filename='images/' ~ item.image) }}" alt="{{ item.name }}">
+                <h3>{{ item.name }}</h3>
+                <p class="menu-meta">
+                    {{ item.category }}{% if item.vegan %} · Vegan{% endif %}
+                </p>
+                <p>{{ item.description }}</p>
+                <div class="menu-tags">
+                    {% if item.category == "Non-Veg" %}
+                        <span class="menu-tag">Crispy</span>
+                    {% endif %}
+                    {% if item.vegan %}
+                        <span class="menu-tag">Plant-Based</span>
+                    {% endif %}
+                </div>
+                <p class="price">${{ "%.2f"|format(item.price) }}</p>
+                <form action="{{ url_for('add_to_cart') }}" method="POST">
+                    <input type="hidden" name="item_name" value="{{ item.name }}">
+                    <input type="hidden" name="price" value="{{ item.price }}">
+                    <input type="hidden" name="redirect_to" value="{{ url_for('home') }}">
+                    <button type="submit" class="button">Add to Cart</button>
+                </form>
             </div>
-            <p class="price">${{ "%.2f"|format(item.price) }}</p>
-            <form action="{{ url_for('add_to_cart') }}" method="POST">
-                <input type="hidden" name="item_name" value="{{ item.name }}">
-                <input type="hidden" name="price" value="{{ item.price }}">
-                <input type="hidden" name="redirect_to" value="{{ url_for('home') }}">
-                <button type="submit" class="button">Add to Cart</button>
-            </form>
-        </div>
-        {% endfor %}
+            {% endfor %}
+        {% else %}
+            <div class="menu-empty" style="grid-column: 1 / -1; text-align: center; padding: 40px;">
+                <p style="font-size: 18px; color: #666; margin-bottom: 16px;">🍽️ Menu items are being loaded...</p>
+                <a href="{{ url_for('menu_page') }}" class="button">View Full Menu</a>
+            </div>
+        {% endif %}
     </div>
 </section>
 
